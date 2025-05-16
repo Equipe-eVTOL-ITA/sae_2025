@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sae_cv_utils</name>
+  <version>0.1.0</version>
+  <description>Computer vision functions and ROS 2 Nodes for FRTL 2024</description>
+
+  <!-- Maintainer and license information -->
+  <maintainer email="viniceconp@gmail.com">Vinicius Ceccon</maintainer>
+  <license>TODO: License declaration</license>
+
+  <!-- Build tools -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- Package dependencies -->
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>ultralytics</depend>
+  <depend>vision_msgs</depend>
+  <depend>custom_msgs</depend>
+
+  <exec_depend>pyzbar</exec_depend>
+  <exec_depend>opencv-python</exec_depend>
+
+  <!-- Test dependencies -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <!-- Exporting build type -->
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

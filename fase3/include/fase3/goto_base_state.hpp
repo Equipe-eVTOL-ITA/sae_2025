@@ -27,7 +27,7 @@ public:
         pos = drone->getLocalPosition();
 
         if ((pos-goal).norm() < 0.08) {
-            return "ARRIVED AT POINT";
+            return "ARRIVED AT BASE";
         }
         
         Eigen::Vector3d diff = goal - pos;

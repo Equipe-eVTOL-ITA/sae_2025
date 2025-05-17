@@ -1,4 +1,7 @@
 #include "fase3/initial_takeoff_state.hpp"
+#include "fase3/search_base_state.hpp"
+#include "drone/Drone.hpp"
+#include "fsm/fsm.hpp"
 #include "fase3/landing_state.hpp"
 #include "fase3/precision_align_state.hpp"
 #include "fase3/goto_base_state.hpp"
@@ -26,9 +29,10 @@ public:
         // STATES
 
         this->add_state("INITIAL TAKEOFF", std::make_unique<InitialTakeoffState>());
-        this->add_state("GO TO POSITION", std::make_unique<GoToBaseState>());
+        this->add_state("SEARCH BASE", std::make_unique<SearchBaseState>());
+        this->add_state("GO TO BASE", std::make_unique<GoToBaseState>());
         this->add_state("PRECISION ALIGN", std::make_unique<PrecisionAlignState>());
-        this->add_state("LANDING", std::make_unique<LandingState>());
+        this->add_state("PRECISION LANDING", std::make_unique<LandingState>());
 
         // Initial Takeoff transitions
         this->add_transitions("INITIAL TAKEOFF", {{"INITIAL TAKEOFF COMPLETED", "SEARCH BASE"},{"SEG FAULT", "ERROR"}});

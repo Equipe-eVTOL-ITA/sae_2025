@@ -18,7 +18,8 @@ setup(
             'yolo_classifier = yolo_classifier.yolo_classifier:main',
             'barcode = barcode_detector.oak_bar:main',
             'qrcode = qrcode_detector.qrcode_detector:main',
-            'bucket_detector = bucket_detector.bucket_detector:main'
+            'bucket_detector = bucket_detector.bucket_detector:main',
+            'landing_base_detector = landing_base_detector.landing_base_detector:main'
         ],
     }
 )

@@ -13,59 +13,49 @@ public:
         if (drone == nullptr) return;
         drone->log("STATE: Euler Spiral");
 
+        r = *blackboard.get<float>("spiral_radius_initial");
+        r_limit = *blackboard.get<float>("spiral_radius_limit");
         max_velocity = *blackboard.get<float>("max_horizontal_velocity");
-        float takeoff_height = *blackboard.get<float>("takeoff_height");
 
-        // Record the starting position and use its z coordinate.
-        pos0 = drone->getLocalPosition();
-        pos0[2] = takeoff_height;
-        current_yaw = drone->getOrientation()[2];
+        center = drone->getLocalPosition();
+        z_ref = center.z();
+        yaw_ref = drone->getOrientation().z();
+        
+        angular_vel = max_velocity / r;
+        theta = 0.0;
+        dt = 0.05;
 
-        // initialize spiral state:
-        s = 0.0;
-        dt = 0.05;        // time step in seconds
-        spiral_a = 0.3;  // parameter controlling rate of curvature increase
+        double tempo_busca = 1.5 * 60 / dt; // 1 minuto e meio
+        step = (r_limit - r) / tempo_busca;
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
         (void)blackboard;
-        // Get the current position.
-        Eigen::Vector3d current_pos = drone->getLocalPosition();
 
-        // Compute the arc length increment based on constant dt.
-        double ds = max_velocity * dt * 10;
-        s += ds;
-        // Increase yaw using the instantaneous curvature: k(s)= spiral_a * s.
-        current_yaw += spiral_a * s * ds;
-        
-        // Calculate the new position incrementally:
-        Eigen::Vector3d new_pos = current_pos;
-        new_pos[0] += ds * std::cos(current_yaw);
-        new_pos[1] += ds * std::sin(current_yaw);
-        // Maintain constant altitude.
-        new_pos[2] = pos0[2];
+        r += step;
+        angular_vel = max_velocity / r;
+        theta += angular_vel * dt;
+        Eigen::Vector3d p = center;
+        p.x() += r * std::cos(theta);
+        p.y() += r * std::sin(theta);
+        p.z()  = z_ref;
+        drone->setLocalPosition(p.x(), p.y(), p.z(), yaw_ref);
 
-        drone->setLocalPosition(new_pos[0], new_pos[1], new_pos[2], current_yaw);
+        if (r > r_limit) return "FOUND BASE";
 
-        // Terminate the state if the spiral arc-length exceeds a threshold.
-        if (s > 20.0) {
-            return "FOUND BASE";
-        }
-        
         return "";
     }
 
     void on_exit(fsm::Blackboard &blackboard) override {
-        blackboard.set<Eigen::Vector2d>("approximate_base", Eigen::Vector2d(pos0[0], pos0[1]));
+        Eigen::Vector3d pos = drone->getLocalPosition();
+        blackboard.set<Eigen::Vector2d>("approximate_base", Eigen::Vector2d(pos.x(), pos.y()));
+        drone->log("Approximate base: " + std::to_string(pos.x()) + " " + std::to_string(pos.y()));
     }
 
 private:
-    Drone* drone;
-    float max_velocity;
-    // Variables for Euler spiral trajectory:
-    Eigen::Vector3d pos0;
-    double s;          // accumulated arc length
-    double dt;         // time step
-    double spiral_a;   // curvature parameter, k(s) = spiral_a * s
-    double current_yaw;
+    Drone* drone{nullptr};
+    Eigen::Vector3d center;
+    double z_ref, yaw_ref, dt;
+    double step, r, r_limit;
+    double theta, angular_vel, max_velocity;
 };

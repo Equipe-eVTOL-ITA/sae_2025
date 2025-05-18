@@ -4,6 +4,8 @@ fase3_fsm:
     max_vertical_velocity: 0.8
     max_horizontal_velocity: 0.8
     classe_base_pouso: 2
+    spiral_radius_initial: 0.5
+    spiral_radius_limit: 4.0
 
 landing_base_detector:
   ros__parameters:

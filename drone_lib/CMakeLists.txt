@@ -15,6 +15,8 @@ find_package(rclcpp REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(vision_msgs REQUIRED)
 find_package(custom_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 
 
@@ -30,9 +32,10 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+
+
 include_directories(include)
 
-# define a library target called my_value_converter_library
 add_library(sae_drone_lib SHARED
   src/Drone.cpp
 )
@@ -44,6 +47,17 @@ ament_target_dependencies(sae_drone_lib
   tf2
   cv_bridge
   vision_msgs
+  custom_msgs
+)
+
+add_executable(pos_to_rviz
+  src/pos_to_rviz.cpp
+)
+
+ament_target_dependencies(pos_to_rviz
+  rclcpp
+  geometry_msgs
+  nav_msgs
   custom_msgs
 )
 
@@ -66,5 +80,8 @@ install(
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
+
+install(TARGETS pos_to_rviz
+  RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

@@ -14,7 +14,8 @@
 class Fase3FSM : public fsm::FSM {
 public:
     Fase3FSM(float takeoff_height, float max_vertical_velocity, 
-             float max_horizontal_velocity, int classe_base_pouso) 
+             float max_horizontal_velocity, int classe_base_pouso,
+             float spiral_radius_initial, float spiral_radius_limit) 
         : fsm::FSM({"ERROR", "FINISHED"}) {
 
         this->blackboard_set<Drone>("drone", new Drone());
@@ -25,6 +26,8 @@ public:
         this->blackboard_set<float>("max_vertical_velocity", max_vertical_velocity);
         this->blackboard_set<float>("max_horizontal_velocity", max_horizontal_velocity);
         this->blackboard_set<int>("classe_base_pouso", classe_base_pouso);
+        this->blackboard_set<float>("spiral_radius_initial", spiral_radius_initial);
+        this->blackboard_set<float>("spiral_radius_limit", spiral_radius_limit);
 
         // STATES
 
@@ -59,19 +62,25 @@ public:
         this->declare_parameter("max_vertical_velocity", 0.8);
         this->declare_parameter("max_horizontal_velocity", 0.8);
         this->declare_parameter("classe_base_pouso", 2);
+        this->declare_parameter("spiral_radius_initial", 0.5);
+        this->declare_parameter("spiral_radius_limit", 4.0);
 
         // Get parameter values
         float takeoff_height = this->get_parameter("takeoff_height").as_double();
         float max_vertical_velocity = this->get_parameter("max_vertical_velocity").as_double();
         float max_horizontal_velocity = this->get_parameter("max_horizontal_velocity").as_double();
         int classe_base_pouso = this->get_parameter("classe_base_pouso").as_int();
+        float spiral_radius_initial = this->get_parameter("spiral_radius_initial").as_double();
+        float spiral_radius_limit = this->get_parameter("spiral_radius_limit").as_double();
         
         // Initialize the FSM with the parameters
         my_fsm = std::make_unique<Fase3FSM>(
             takeoff_height, 
             max_vertical_velocity, 
             max_horizontal_velocity, 
-            classe_base_pouso
+            classe_base_pouso,
+            spiral_radius_initial,
+            spiral_radius_limit
         );
         
         timer_ = this->create_wall_timer(

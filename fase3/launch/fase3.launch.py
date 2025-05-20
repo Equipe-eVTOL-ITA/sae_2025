@@ -5,16 +5,19 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
+
+    pkg_fase3   = get_package_share_directory('sae_fase3')
+
     detector_node = Node(
         package='sae_cv_utils',
         executable='landing_base_detector',
-        parameters=[os.path.join(get_package_share_directory('sae_fase3'), 'launch', 'params.yaml')]
+        parameters=[os.path.join(pkg_fase3, 'launch', 'params.yaml')]
     )
 
     fase3_node = Node(
         package='sae_fase3',
         executable='fase3',
-        parameters=[os.path.join(get_package_share_directory('sae_fase3'), 'launch', 'params.yaml')],
+        parameters=[os.path.join(pkg_fase3, 'launch', 'params.yaml')],
         output='screen'
     )
 
@@ -24,13 +27,20 @@ def generate_launch_description():
         output='screen'
     )
 
-    delayed_fase3_node = TimerAction(
-        period=5.0,
-        actions=[fase3_node]
+    rviz_cfg = os.path.join(pkg_fase3, 'launch', 'drone_viz.rviz')
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_cfg]
     )
+
+    delayed_fase3_node = TimerAction(period=5.0, actions=[fase3_node])
 
     return LaunchDescription([
         detector_node,
         bridge_node,
+        rviz_node,
         delayed_fase3_node
     ])

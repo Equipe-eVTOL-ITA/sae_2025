@@ -296,7 +296,8 @@ Drone::Drone() {
 				bbox_center_y_ = detection.bbox.center.position.y;
 				bbox_size_x_ = detection.bbox.size_x;
 				bbox_size_y_ = detection.bbox.size_y;
-				vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
+				bbox_class_id_ = detection.results[0].hypothesis.class_id;
+				vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, bbox_class_id_});
 			}
 		}
 	);

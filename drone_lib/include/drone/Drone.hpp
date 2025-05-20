@@ -111,6 +111,7 @@ struct BoundingBox
 	double center_y;
 	double size_x;
 	double size_y;
+	std::string class_id = "-1";
 };
 } // namespace DronePX4
 
@@ -341,6 +342,7 @@ private:
 	float bbox_center_y_{0.0};
 	float bbox_size_x_{0.0};
 	float bbox_size_y_{0.0};
+	std::string bbox_class_id_{""};
 
 	std::vector<std::string> gestures_{"", ""};
 

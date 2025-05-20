@@ -23,10 +23,10 @@ public:
       "/position", qos,
       [this](const custom_msgs::msg::Position &in)
       {
-        if (!std::isfinite(in.x_ned)   || !std::isfinite(in.y_ned)   ||
-            !std::isfinite(in.z_ned)   || !std::isfinite(in.yaw_ned) ||
-            !std::isfinite(in.vx_ned)  || !std::isfinite(in.vy_ned)  ||
-            !std::isfinite(in.vz_ned)) {
+        if (!std::isfinite(in.x_frd)   || !std::isfinite(in.y_frd)   ||
+            !std::isfinite(in.z_frd)   || !std::isfinite(in.yaw_frd) ||
+            !std::isfinite(in.vx_frd)  || !std::isfinite(in.vy_frd)  ||
+            !std::isfinite(in.vz_frd)) {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                                 "Ignoring Position with NaN/inf");
             return;
@@ -38,11 +38,11 @@ public:
         pose.header.stamp = t;
         pose.header.frame_id = "map";
 
-        pose.pose.position.x = in.x_ned;
-        pose.pose.position.y = in.y_ned;
-        pose.pose.position.z = -in.z_ned;
+        pose.pose.position.x = in.x_frd;
+        pose.pose.position.y = in.y_frd;
+        pose.pose.position.z = -in.z_frd;
 
-        double half = in.yaw_ned * 0.5;
+        double half = in.yaw_frd * 0.5;
         pose.pose.orientation.w = std::cos(half);
         pose.pose.orientation.x = 0.0;
         pose.pose.orientation.y = 0.0;
@@ -56,9 +56,9 @@ public:
 
         geometry_msgs::msg::TwistStamped twist;
         twist.header = pose.header;
-        twist.twist.linear.x = in.vx_ned;
-        twist.twist.linear.y = in.vy_ned;
-        twist.twist.linear.z = -in.vz_ned;
+        twist.twist.linear.x = in.vx_frd;
+        twist.twist.linear.y = in.vy_frd;
+        twist.twist.linear.z = -in.vz_frd;
         twist_pub_->publish(twist);
       });
   }

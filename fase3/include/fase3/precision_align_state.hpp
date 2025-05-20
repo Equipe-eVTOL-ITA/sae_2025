@@ -19,6 +19,7 @@ public:
         drone = blackboard.get<Drone>("drone");
         if (!drone)
             return;
+
         drone->log("STATE: PrecisionAlignState");
     }
 
@@ -36,7 +37,7 @@ public:
             DronePX4::BoundingBox vertical_bbox = verticalDetection.getClosestBbox();
             vertical_distance = verticalDetection.getMinDistance();
 
-            x_rate = x_pid.compute(vertical_bbox.center_y);
+            x_rate = x_pid.compute(-vertical_bbox.center_y);
             y_rate = y_pid.compute(vertical_bbox.center_x);
         }
         if (vertical_distance < 0.03){
@@ -45,7 +46,7 @@ public:
 
         float frd_x_rate = x_rate * cos(yaw) - y_rate * sin(yaw);
         float frd_y_rate = x_rate * sin(yaw) + y_rate * cos(yaw);
-        drone->setLocalVelocity(frd_x_rate, -frd_y_rate, 0, 0);
+        drone->setLocalVelocity(frd_x_rate, frd_y_rate, 0, 0);
 
         return "";
     }
@@ -55,24 +56,4 @@ private:
     int waypoints_visited;
 
     PidController x_pid, y_pid;
-
-    void captureAndSaveImages() {
-        auto angledImg = drone->getAngledImage();
-        auto verticalImg = drone->getVerticalImage();
-
-        // Generate a timestamp.
-        auto now = std::chrono::system_clock::now();
-        auto timeNow = std::chrono::system_clock::to_time_t(now);
-        char timestamp[32];
-        std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", std::localtime(&timeNow));
-
-        // Create bucket_detections folder.
-        std::filesystem::create_directory("bucket_detections");
-
-        // Save images in the "bucket_detections" folder with descriptive names.
-        std::string angledFilename = std::string("bucket_detections/angled_") + timestamp + ".png";
-        std::string verticalFilename = std::string("bucket_detections/vertical_") + timestamp + ".png";
-        cv::imwrite(angledFilename, angledImg->image);
-        cv::imwrite(verticalFilename, verticalImg->image);
-    }
 };

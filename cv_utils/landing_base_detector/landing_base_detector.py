@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
-from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D
+from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, ObjectHypothesisWithPose
 import cv2
 import os
 from ultralytics import YOLO
@@ -45,7 +45,7 @@ class LandingBaseDetector(Node):
         )
 
         # Set dynamic topic names based on the model name
-        classification_topic = '/vertical_classification'
+        classification_topic = '/vertical_camera/classification'
         image_topic = f'/{model_name}/image/compressed'
 
         self.classification_publisher_ = self.create_publisher(Detection2DArray, classification_topic, 10)
@@ -81,6 +81,11 @@ class LandingBaseDetector(Node):
         # Process outputs
         for result in results:
             for box in result.boxes:
+                class_id = str(box.cls[0].cpu().numpy())
+                score = float(box.conf[0].cpu().numpy())
+
+                if (score < 0.3):
+                    continue
                 
                 # CLASSIFICATION POINTS
                 detection = Detection2D()
@@ -90,8 +95,13 @@ class LandingBaseDetector(Node):
                 detection.bbox.center.position.y = float(y_center)
                 detection.bbox.size_x = float(width)
                 detection.bbox.size_y = float(height)
-                if box.conf[0] > 0.3:
-                    detections.detections.append(detection)
+
+                hypo = ObjectHypothesisWithPose()
+                hypo.hypothesis.class_id = class_id
+                hypo.hypothesis.score = score
+
+                detection.results.append(hypo)
+                detections.detections.append(detection)
 
                 # ANNOTATED IMAGES
                 x1, y1, x2, y2 = box.xyxy[0]

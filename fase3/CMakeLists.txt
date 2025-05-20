@@ -33,16 +33,28 @@ ament_target_dependencies(fase3
   vision_msgs
 )
 
+add_executable(test_takeoff_landing
+  src/test_takeoff_landing.cpp
+)
+
+ament_target_dependencies(test_takeoff_landing
+  rclcpp
+  fsm
+  sae_drone_lib
+  Eigen3
+  vision_msgs
+)
+
 target_link_libraries(fase3 ${OpenCV_LIBS})
 
-
-target_link_libraries(fase3 ${OpenCV_LIBS})
+target_link_libraries(test_takeoff_landing ${OpenCV_LIBS})
 
 #Install
 
 install(
   TARGETS
     fase3
+    test_takeoff_landing
   DESTINATION lib/${PROJECT_NAME}
 )
 

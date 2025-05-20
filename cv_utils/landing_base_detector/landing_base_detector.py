@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, Image
 from cv_bridge import CvBridge, CvBridgeError
 from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, ObjectHypothesisWithPose
 import cv2
@@ -27,7 +27,7 @@ class LandingBaseDetector(Node):
         self.model_path = os.path.join(self.script_dir, '../models', f'{model_name}.pt')
 
         # Load the model
-        self.model = YOLO(self.model_path)
+        self.model = YOLO(self.model_path, verbose=False)
 
         qos_profile = QoSProfile(
             depth=10,
@@ -46,10 +46,10 @@ class LandingBaseDetector(Node):
 
         # Set dynamic topic names based on the model name
         classification_topic = '/vertical_camera/classification'
-        image_topic = f'/{model_name}/image/compressed'
+        image_topic = f'/{model_name}/image'
 
         self.classification_publisher_ = self.create_publisher(Detection2DArray, classification_topic, 10)
-        self.image_publisher_ = self.create_publisher(CompressedImage, image_topic, 10)
+        self.image_publisher_ = self.create_publisher(Image, image_topic, 10)
 
         # Set up a 10 Hz timer for processing images
         self.timer = self.create_timer(0.1, self.process_image_callback)
@@ -121,7 +121,7 @@ class LandingBaseDetector(Node):
 
         # Convert the modified frame back to an Image message
         try:
-            annotated_msg = self.bridge.cv2_to_compressed_imgmsg(current_frame)
+            annotated_msg = self.bridge.cv2_to_imgmsg(current_frame, encoding="bgr8")
             # self.get_logger().info("Publishing annotated image.")
             self.image_publisher_.publish(annotated_msg)
         except CvBridgeError as e:

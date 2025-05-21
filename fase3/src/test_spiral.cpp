@@ -11,9 +11,9 @@
 #include <iostream>
 
 
-class TakeoffLandingFSM : public fsm::FSM {
+class Fase3FSM : public fsm::FSM {
 public:
-    TakeoffLandingFSM(float takeoff_height, float max_vertical_velocity, 
+    Fase3FSM(float takeoff_height, float max_vertical_velocity, 
              float max_horizontal_velocity, std::string classe_base_pouso,
              float spiral_radius_initial, float spiral_radius_limit) 
         : fsm::FSM({"ERROR", "FINISHED"}) {
@@ -32,10 +32,14 @@ public:
         // STATES
 
         this->add_state("INITIAL TAKEOFF", std::make_unique<InitialTakeoffState>());
+        this->add_state("SEARCH BASE", std::make_unique<SearchBaseState>());
         this->add_state("PRECISION LANDING", std::make_unique<LandingState>());
 
         // Initial Takeoff transitions
-        this->add_transitions("INITIAL TAKEOFF", {{"INITIAL TAKEOFF COMPLETED", "PRECISION LANDING"},{"SEG FAULT", "ERROR"}});
+        this->add_transitions("INITIAL TAKEOFF", {{"INITIAL TAKEOFF COMPLETED", "SEARCH BASE"},{"SEG FAULT", "ERROR"}});
+
+        // Search Base transitions
+        this->add_transitions("SEARCH BASE", {{"FOUND BASE", "PRECISION LANDING"},{"SEG FAULT", "ERROR"}});
 
         // Precision Landing transitions
         this->add_transitions("PRECISION LANDING", {{"LANDED", "FINISHED"},{"SEG FAULT", "ERROR"}});
@@ -44,7 +48,7 @@ public:
 
 class NodeFSM : public rclcpp::Node {
 public:
-    NodeFSM() : rclcpp::Node("test_takeoff_landing_node") {
+    NodeFSM() : rclcpp::Node("test_spiral_node") {
         // Declare parameters in the Node class
         this->declare_parameter("takeoff_height", -2.0);
         this->declare_parameter("max_vertical_velocity", 0.8);
@@ -62,7 +66,7 @@ public:
         float spiral_radius_limit = this->get_parameter("spiral_radius_limit").as_double();
         
         // Initialize the FSM with the parameters
-        my_fsm = std::make_unique<TakeoffLandingFSM>(
+        my_fsm = std::make_unique<Fase3FSM>(
             takeoff_height, 
             max_vertical_velocity, 
             max_horizontal_velocity, 
@@ -85,7 +89,7 @@ public:
     }
 
 private:
-    std::unique_ptr<TakeoffLandingFSM> my_fsm;
+    std::unique_ptr<Fase3FSM> my_fsm;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 

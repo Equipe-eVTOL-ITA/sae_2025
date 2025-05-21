@@ -325,8 +325,8 @@ private:
 	float pitch_{0};
 	float yaw_{0};
 
-	Eigen::Vector3d frd_home_position_{0};
-	Eigen::Vector3d ned_home_position_{0};
+	Eigen::Vector3d frd_home_position_ = Eigen::Vector3d::Zero();
+	Eigen::Vector3d ned_home_position_ = Eigen::Vector3d::Zero();
 	float initial_yaw_{0};
 
     Eigen::Vector3d convertPositionNEDtoFRD(const Eigen::Vector3d& position_ned) const;

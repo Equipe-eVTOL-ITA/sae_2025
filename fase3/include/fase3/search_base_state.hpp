@@ -26,7 +26,7 @@ public:
         theta = 0.0;
         dt = 0.05;
 
-        double tempo_busca = 1.5 * 60 / dt; // 1 minuto e meio
+        double tempo_busca = 1.0 * 60 / dt; // 1 minuto
         step = (r_limit - r) / tempo_busca;
     }
 
@@ -86,7 +86,7 @@ private:
         // IMAGE TRANSFORMS -------------------
         
         double x_max_dist = 3.0; //distance on ground from left to right of picture when flying at takeoff altitude
-        double y_max_dist = x_max_dist; //based on 4:3 image proportion - from up to down
+        double y_max_dist = x_max_dist; //based on 1:1 image proportion - from up to down
 
         double height = -pos.z();
 

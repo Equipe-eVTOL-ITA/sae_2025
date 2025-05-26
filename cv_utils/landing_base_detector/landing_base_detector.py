@@ -84,7 +84,7 @@ class LandingBaseDetector(Node):
                 class_id = str(box.cls[0].cpu().numpy())
                 score = float(box.conf[0].cpu().numpy())
 
-                if (score < 0.3):
+                if (score < 0.4):
                     continue
                 
                 # CLASSIFICATION POINTS
@@ -111,11 +111,11 @@ class LandingBaseDetector(Node):
                 cv2.rectangle(current_frame, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
 
                 # Display the confidence
-                label = f'{confidence:.2f}'
-                label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                label = f'Class: {class_id}, Conf: {confidence:.2f}'
+                label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
                 top = max(int(y1), label_size[1])
                 cv2.rectangle(current_frame, (int(x1), top - label_size[1]), (int(x1) + label_size[0], top + base_line), (255, 0, 0), cv2.FILLED)
-                cv2.putText(current_frame, label, (int(x1), top), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                cv2.putText(current_frame, label, (int(x1), top), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
         self.classification_publisher_.publish(detections)
 

@@ -213,6 +213,30 @@ public:
 
 	std::string readQRCode();
 	
+	/*
+		Subscription Management for Performance Optimization
+	*/
+	
+	// Enable/disable specific subscriptions to reduce overhead
+	void enableCameraSubscriptions(bool vertical = true, bool horizontal = true, bool angled = true);
+	void disableCameraSubscriptions();
+	void enableComputerVisionSubscriptions(bool vertical = true, bool angled = true);
+	void disableComputerVisionSubscriptions();
+	void enableCustomMessageSubscriptions(bool gestures = true, bool hand_location = true, bool barcodes = true, bool qr_codes = true);
+	void disableCustomMessageSubscriptions();
+	
+	// Check subscription status
+	bool isCameraSubscriptionActive(const std::string& camera_type) const;
+	bool isComputerVisionSubscriptionActive(const std::string& cv_type) const;
+	bool isCustomMessageSubscriptionActive(const std::string& msg_type) const;
+	
+	// Performance monitoring
+	void printSubscriptionStats();
+	size_t getActiveSubscriptionCount() const;
+	
+	// Optimized QoS profiles for different subscription types
+	static rclcpp::QoS getOptimizedQoS(const std::string& subscription_type);
+	
 private:
 	/// Send command to PX4
 	/// \param[in] command Command ID
@@ -352,6 +376,23 @@ private:
 	std::string qr_code_data_{""}; 
 
 	std::unordered_map<std::string, rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr> image_publishers_;
+	
+	// Subscription state tracking for optimization
+	struct SubscriptionState {
+		bool vertical_camera_active = false;
+		bool horizontal_camera_active = false; 
+		bool angled_camera_active = false;
+		bool vertical_cv_active = true;  // Keep CV active by default since used by FSM
+		bool angled_cv_active = false;    // Keep CV active by default since used by FSM
+		bool gestures_active = false;     // Keep custom messages active by default
+		bool hand_location_active = false;
+		bool barcodes_active = false;
+		bool qr_codes_active = false;
+	} subscription_state_;
+	
+	// Performance tracking
+	mutable std::chrono::time_point<std::chrono::high_resolution_clock> last_stats_print_;
+	mutable size_t total_message_count_ = 0;
 	
 	static std::unordered_map<std::string, std::string> encoding_map_;
 };

@@ -18,7 +18,10 @@ public:
              float spiral_radius_initial, float spiral_radius_limit) 
         : fsm::FSM({"ERROR", "FINISHED"}) {
 
-        this->blackboard_set<Drone>("drone", new Drone());
+        Drone* drone = new Drone();
+        this->blackboard_set<Drone>("drone", drone);
+
+        drone->printSubscriptionStats();
         
         // PARAMETERS
 

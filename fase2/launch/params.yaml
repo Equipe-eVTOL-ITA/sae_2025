@@ -1,0 +1,13 @@
+fase2_fsm:
+  ros__parameters:
+    takeoff_height: -3.0
+    max_vertical_velocity: 1.0
+    max_horizontal_velocity: 1.0
+    classe_base_pouso: "4.0"
+    spiral_radius_initial: 1.5
+    spiral_radius_limit: 5.0
+
+landing_base_detector:
+  ros__parameters:
+    image_topic: '/vertical_camera/compressed'
+    model: 'bases_v0'

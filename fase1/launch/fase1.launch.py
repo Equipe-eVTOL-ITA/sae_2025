@@ -18,7 +18,7 @@ def generate_launch_description():
 
     detector_node = Node(
         package='sae_cv_utils',
-        executable='landing_base_detector',
+        executable='post_detector',
         parameters=[params]
     )
 

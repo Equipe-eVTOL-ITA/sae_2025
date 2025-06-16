@@ -1,0 +1,31 @@
+HSV Color Parameters for Post Detection
+==================================================
+
+Preto Post:
+--------------------
+H: 0-180
+S: 0-255
+V: 0-50
+
+Azul Post:
+--------------------
+H: 105-125
+S: 110-255
+V: 85-255
+
+Vermelho Post:
+--------------------
+Range 1: H=0-10, S=50-255, V=50-255
+Range 2: H=170-180, S=50-255, V=50-255
+
+Rosa Post:
+--------------------
+H: 140-170
+S: 50-255
+V: 50-255
+
+Notes:
+- H (Hue): 0-180 in OpenCV HSV
+- S (Saturation): 0-255
+- V (Value/Brightness): 0-255
+- Red uses two ranges due to hue wrap-around at 0/180

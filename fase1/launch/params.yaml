@@ -11,3 +11,58 @@ landing_base_detector:
   ros__parameters:
     image_topic: '/vertical_camera/compressed'
     model: 'bases_v0'
+
+post_detector:
+  ros__parameters:
+    # Image and processing parameters
+    image_topic: '/horizontal_camera/compressed'
+    processing_frequency: 10.0  # Hz
+    confidence_threshold: 0.3
+    
+    # Morphological operations parameters
+    min_area: 300  # Increased to filter out small sky patches
+    morph_kernel_size: 5
+    morph_iterations: 2
+    
+    # Post detection constraints - Posts are vertical: 0.1m diameter, 2.5m height
+    min_aspect_ratio: 0.02  # Very thin vertical objects (width/height)
+    max_aspect_ratio: 0.8   # Still vertical, but allow some perspective distortion
+    
+    # HSV Color ranges for post detection - Made more restrictive to avoid sky
+    # Preto (Black) - Low value for dark/black colors
+    preto_lower_h: 0
+    preto_lower_s: 0
+    preto_lower_v: 0
+    preto_upper_h: 180
+    preto_upper_s: 255
+    preto_upper_v: 50  # Reduced from 60 to avoid shadows
+    
+    # Azul (Blue) - Slightly less restrictive but still avoiding sky
+    azul_lower_h: 105  # Slightly wider hue range
+    azul_lower_s: 110  # Reduced saturation requirement
+    azul_lower_v: 85   # Reduced value requirement
+    azul_upper_h: 125  # Slightly wider hue range
+    azul_upper_s: 255
+    azul_upper_v: 255
+    
+    # Vermelho (Red) - Two ranges due to HSV wrap-around
+    vermelho_lower1_h: 0
+    vermelho_lower1_s: 50
+    vermelho_lower1_v: 50
+    vermelho_upper1_h: 10
+    vermelho_upper1_s: 255
+    vermelho_upper1_v: 255
+    vermelho_lower2_h: 170
+    vermelho_lower2_s: 50
+    vermelho_lower2_v: 50
+    vermelho_upper2_h: 180
+    vermelho_upper2_s: 255
+    vermelho_upper2_v: 255
+    
+    # Rosa (Pink)
+    rosa_lower_h: 140
+    rosa_lower_s: 50
+    rosa_lower_v: 50
+    rosa_upper_h: 170
+    rosa_upper_s: 255
+    rosa_upper_v: 255

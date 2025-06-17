@@ -43,7 +43,7 @@ mangueira_detector:
   ros__parameters:
     image_topic: '/vertical_camera/compressed'
     processing_frequency: 10.0
-    confidence_threshold: 0.3
+    confidence_threshold: 0.4
     
     # Hose detection parameters
     min_hose_area: 200
@@ -58,17 +58,17 @@ mangueira_detector:
     max_hose_width: 15000
     
     # Red hose HSV parameters (range 1: 0-10)
-    red_lower1_h: 0
-    red_lower1_s: 50
-    red_lower1_v: 30
-    red_upper1_h: 10
+    red_lower1_h: 10
+    red_lower1_s: 60
+    red_lower1_v: 40
+    red_upper1_h: 30
     red_upper1_s: 255
     red_upper1_v: 255
     
     # Red hose HSV parameters (range 2: 170-180)
     red_lower2_h: 170
-    red_lower2_s: 50
-    red_lower2_v: 30
+    red_lower2_s: 60
+    red_lower2_v: 40
     red_upper2_h: 200
     red_upper2_s: 255
     red_upper2_v: 255

@@ -16,7 +16,9 @@ setup(
     entry_points={
         'console_scripts': [
             'landing_base_detector = landing_base_detector.landing_base_detector:main',
-            'post_detector = slalom.post_detector:main'
+            'post_detector = slalom.post_detector:main',
+            'blueline_detector = hook.blueline:main',
+            'mangueira_detector = hook.mangueira:main'
         ],
     }
 )

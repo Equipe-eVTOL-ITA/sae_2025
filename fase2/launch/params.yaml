@@ -11,3 +11,64 @@ landing_base_detector:
   ros__parameters:
     image_topic: '/vertical_camera/compressed'
     model: 'bases_v0'
+
+# Blue line detector parameters
+blueline_detector:
+  ros__parameters:
+    image_topic: '/vertical_camera/compressed'
+    processing_frequency: 10.0
+    confidence_threshold: 0.1
+    
+    # Blue line detection parameters
+    min_line_area: 100
+    morph_kernel_size: 7
+    morph_iterations: 3
+    
+    # Blue line HSV parameters (navy blue fabric)
+    blue_lower_h: 70
+    blue_lower_s: 60
+    blue_lower_v: 25
+    blue_upper_h: 150
+    blue_upper_s: 255
+    blue_upper_v: 255
+    
+    # Line following parameters
+    roi_top: 0.2
+    roi_bottom: 0.8
+    min_line_length: 20
+    max_line_gap: 60
+
+# Red hose detector parameters
+mangueira_detector:
+  ros__parameters:
+    image_topic: '/vertical_camera/compressed'
+    processing_frequency: 10.0
+    confidence_threshold: 0.3
+    
+    # Hose detection parameters
+    min_hose_area: 200
+    max_hose_area: 100000
+    morph_kernel_size: 3
+    morph_iterations: 2
+    
+    # Hose shape constraints
+    min_aspect_ratio: 0.0
+    max_aspect_ratio: 400.0
+    min_hose_length: 100
+    max_hose_width: 15000
+    
+    # Red hose HSV parameters (range 1: 0-10)
+    red_lower1_h: 0
+    red_lower1_s: 50
+    red_lower1_v: 30
+    red_upper1_h: 10
+    red_upper1_s: 255
+    red_upper1_v: 255
+    
+    # Red hose HSV parameters (range 2: 170-180)
+    red_lower2_h: 170
+    red_lower2_s: 50
+    red_lower2_v: 30
+    red_upper2_h: 200
+    red_upper2_s: 255
+    red_upper2_v: 255

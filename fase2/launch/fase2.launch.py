@@ -22,6 +22,20 @@ def generate_launch_description():
         parameters=[params]
     )
 
+    blueline_detector_node = Node(
+        package='sae_cv_utils',
+        executable='blueline_detector',
+        parameters=[params],
+        output='screen'
+    )
+
+    mangueira_detector_node = Node(
+        package='sae_cv_utils',
+        executable='mangueira_detector',
+        parameters=[params],
+        output='screen'
+    )
+
     fase2_node = Node(
         package='sae_fase2',
         executable=LaunchConfiguration("mission"),
@@ -48,6 +62,8 @@ def generate_launch_description():
     return LaunchDescription([
         exec_arg,
         detector_node,
+        blueline_detector_node,
+        mangueira_detector_node,
         bridge_node,
         rviz_node,
         delayed_fase2_node

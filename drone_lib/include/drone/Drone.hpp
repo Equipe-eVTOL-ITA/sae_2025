@@ -208,6 +208,7 @@ public:
 
 	std::vector<DronePX4::BoundingBox> getVerticalBboxes();
 	std::vector<DronePX4::BoundingBox> getAngledBboxes();
+	std::vector<DronePX4::BoundingBox> getPostDetections();
 
 	std::vector<Eigen::Vector4d> getBarCodeLocation();
 
@@ -298,6 +299,8 @@ private:
 
 	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr angled_classification_sub_;
 
+	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr post_detection_sub_;
+
 	rclcpp::Subscription<custom_msgs::msg::Gesture>::SharedPtr gesture_sub_;
 
 	rclcpp::Subscription<custom_msgs::msg::HandLocation>::SharedPtr hand_location_sub_;
@@ -360,6 +363,7 @@ private:
 
 	std::vector<DronePX4::BoundingBox> vertical_detections_{};
 	std::vector<DronePX4::BoundingBox> angled_detections_{};
+	std::vector<DronePX4::BoundingBox> post_detections_{};
 	std::vector<Eigen::Vector4d> barcode_detections_ {};
 
 	float bbox_center_x_{0.0};
@@ -384,6 +388,7 @@ private:
 		bool angled_camera_active = false;
 		bool vertical_cv_active = true;  // Keep CV active by default since used by FSM
 		bool angled_cv_active = false;    // Keep CV active by default since used by FSM
+		bool post_detections_active = true; // Keep post detections active for slalom
 		bool gestures_active = false;     // Keep custom messages active by default
 		bool hand_location_active = false;
 		bool barcodes_active = false;

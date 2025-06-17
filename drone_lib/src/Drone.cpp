@@ -346,6 +346,26 @@ Drone::Drone() {
 		);
 	}
 
+	// Post detection subscription - active by default for slalom mission
+	if (subscription_state_.post_detections_active) {
+		this->post_detection_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
+			"/slalom",
+			cv_qos,
+			[this](vision_msgs::msg::Detection2DArray::SharedPtr msg){
+				this->total_message_count_++;
+				post_detections_.clear();
+				for (const auto &detection : msg->detections) {
+					bbox_center_x_ = detection.bbox.center.position.x;
+					bbox_center_y_ = detection.bbox.center.position.y;
+					bbox_size_x_ = detection.bbox.size_x;
+					bbox_size_y_ = detection.bbox.size_y;
+					bbox_class_id_ = detection.results[0].hypothesis.class_id;
+					post_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, bbox_class_id_});
+				}
+			}
+		);
+	}
+
 	// Custom message subscriptions - active by default since used by FSM
 	if (subscription_state_.gestures_active) {
 		this->gesture_sub_ = this->px4_node_->create_subscription<custom_msgs::msg::Gesture>(
@@ -873,6 +893,10 @@ std::vector<DronePX4::BoundingBox> Drone::getAngledBboxes(){
 	return angled_detections_;
 }
 
+std::vector<DronePX4::BoundingBox> Drone::getPostDetections(){
+	return post_detections_;
+}
+
 std::vector<Eigen::Vector4d> Drone::getBarCodeLocation() {
 	return barcode_detections_;
 }
@@ -1253,6 +1277,7 @@ size_t Drone::getActiveSubscriptionCount() const {
     if (subscription_state_.angled_camera_active) count++;
     if (subscription_state_.vertical_cv_active) count++;
     if (subscription_state_.angled_cv_active) count++;
+    if (subscription_state_.post_detections_active) count++;
     if (subscription_state_.gestures_active) count++;
     if (subscription_state_.hand_location_active) count++;
     if (subscription_state_.barcodes_active) count++;

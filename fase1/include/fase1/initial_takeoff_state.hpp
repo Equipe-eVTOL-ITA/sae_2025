@@ -56,6 +56,15 @@ public:
         return "";
     }
 
+    void on_exit(fsm::Blackboard &blackboard) override {
+        // Store the takeoff position as the middle position for return later
+        Eigen::Vector3d middle_position = drone->getLocalPosition();
+        blackboard.set<Eigen::Vector3d>("middle_position", middle_position);
+        drone->log("Middle position stored: {" + std::to_string(middle_position.x()) + 
+                  ", " + std::to_string(middle_position.y()) + 
+                  ", " + std::to_string(middle_position.z()) + "}");
+    }
+
 private:
     float max_velocity;
     Eigen::Vector3d pos, goal, goal_diff, little_goal;

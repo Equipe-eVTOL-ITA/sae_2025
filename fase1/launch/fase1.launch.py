@@ -19,7 +19,9 @@ def generate_launch_description():
     detector_node = Node(
         package='sae_cv_utils',
         executable='post_detector',
-        parameters=[params]
+        parameters=[params],
+        output={'stdout': 'log', 'stderr': 'log'},  # More explicit log control
+        arguments=['--ros-args', '--log-level', 'WARN']  # Only show warnings and errors
     )
 
     fase1_node = Node(

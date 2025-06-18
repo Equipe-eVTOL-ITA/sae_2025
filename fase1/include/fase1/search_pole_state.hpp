@@ -5,6 +5,7 @@
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
 #include "fase1/PidController.hpp"
+#include "fase1/Detection.hpp"
 
 class SearchPoleState : public fsm::State {
 public:
@@ -18,82 +19,93 @@ public:
         current_pole = *blackboard.get<int>("current_pole");
         total_poles = *blackboard.get<int>("total_poles");
         
-        drone->log("STATE: Searching for pole " + std::to_string(current_pole + 1) + "/" + std::to_string(total_poles));
+        // Get the target color for current pole
+        auto pole_colors = *blackboard.get<std::vector<std::string>>("pole_colors");
+        target_color = pole_colors[current_pole];
+        
+        // Get pole direction for current pole (true = right, false = left)
+        auto pole_directions = *blackboard.get<std::vector<bool>>("pole_directions");
+        go_right = pole_directions[current_pole];
+        
+        drone->log("STATE: Searching for pole " + std::to_string(current_pole + 1) + "/" + 
+                  std::to_string(total_poles) + " (Color: " + target_color + 
+                  ", Direction: " + (go_right ? "RIGHT" : "LEFT") + ")");
 
         // Get rotation parameters
         rotation_speed = *blackboard.get<float>("rotation_speed");
         max_search_time = *blackboard.get<float>("max_search_time");
         
-        // Initialize rotation
+        // Set rotation direction based on pole direction
+        // If going right around pole: rotate clockwise (negative angular velocity) to find it
+        // If going left around pole: rotate counter-clockwise (positive angular velocity) to find it
+        if (go_right) {
+            angular_velocity = std::abs(rotation_speed); // Clockwise (negative)
+            drone->log("Rotating CLOCKWISE to find pole on the RIGHT");
+        } else {
+            angular_velocity = -std::abs(rotation_speed);  // Counter-clockwise (positive)
+            drone->log("Rotating COUNTER-CLOCKWISE to find pole on the LEFT");
+        }
+        
         start_time = std::chrono::high_resolution_clock::now();
-        initial_yaw = drone->getOrientation().z();
-        target_yaw = initial_yaw;
-        
-        // Get current position
-        search_position = drone->getLocalPosition();
-        
         pole_found = false;
-        search_complete = false;
+        last_log_time = -1;
+        
+        drone->log("Search parameters: angular_velocity=" + std::to_string(angular_velocity) + 
+                  " rad/s, max_search_time=" + std::to_string(max_search_time) + "s");
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
-        (void)blackboard;
-
         auto current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> elapsed = current_time - start_time;
         
         // Check for timeout
         if (elapsed.count() > max_search_time) {
-            drone->log("Search timeout - proceeding to next pole");
+            drone->log("Search timeout for " + target_color + " pole - exceeded " + 
+                      std::to_string(max_search_time) + " seconds");
+            // Stop rotation
+            drone->setLocalVelocity(0.0f, 0.0f, 0.0f, 0.0f);
             return "POLE_NOT_FOUND";
         }
 
-        // Get post detections
+        // Get current post detections
         auto post_detections = drone->getPostDetections();
         
-        if (!post_detections.empty()) {
-            // Find the most centered detection
-            DronePX4::BoundingBox best_detection;
-            float best_center_distance = std::numeric_limits<float>::max();
-            bool found_detection = false;
+        // Use Detection class to check for target color detection
+        Detection detection(post_detections, target_color);
+        
+        if (detection.isThereDetection()) {
+            drone->log("Found " + target_color + " pole! Stopping search rotation.");
             
-            for (const auto& detection : post_detections) {
-                // Calculate distance from image center
-                float center_x = 0.5f; // Image center
-                float center_y = 0.5f;
-                float distance = std::sqrt(std::pow(detection.center_x - center_x, 2) + 
-                                         std::pow(detection.center_y - center_y, 2));
-                
-                if (distance < best_center_distance) {
-                    best_center_distance = distance;
-                    best_detection = detection;
-                    found_detection = true;
-                }
-            }
+            // Stop rotation
+            drone->setLocalVelocity(0.0f, 0.0f, 0.0f, 0.0f);
             
-            if (found_detection) {
-                // Store the target detection in blackboard
-                blackboard.set<DronePX4::BoundingBox>("target_pole_detection", best_detection);
-                drone->log("Found pole - center distance: " + std::to_string(best_center_distance));
-                return "POLE_FOUND";
+            // Store the detection for the next state
+            DronePX4::BoundingBox target_detection = detection.getClosestBbox();
+            blackboard.set<DronePX4::BoundingBox>("target_pole_detection", target_detection);
+            
+            pole_found = true;
+            return "POLE_FOUND";
+        } else {
+            // Continue rotating to search for the pole
+            drone->setLocalVelocity(0.0f, 0.0f, 0.0f, angular_velocity);
+            
+            // Log search progress every 5 seconds
+            if (static_cast<int>(elapsed.count()) % 5 == 0 && 
+                static_cast<int>(elapsed.count()) != last_log_time) {
+                last_log_time = static_cast<int>(elapsed.count());
+                drone->log("Searching for " + target_color + " pole... " + 
+                          std::to_string(static_cast<int>(elapsed.count())) + "/" + 
+                          std::to_string(static_cast<int>(max_search_time)) + "s");
             }
         }
-
-        // Continue rotating to search for pole
-        target_yaw += rotation_speed * 0.05f; // 50ms update rate
-        
-        // Normalize yaw to [-π, π]
-        while (target_yaw > M_PI) target_yaw -= 2 * M_PI;
-        while (target_yaw < -M_PI) target_yaw += 2 * M_PI;
-        
-        // Set position with updated yaw
-        drone->setLocalPosition(search_position.x(), search_position.y(), search_position.z(), target_yaw);
 
         return "";
     }
 
     void on_exit(fsm::Blackboard &blackboard) override {
         (void)blackboard;
+        // Ensure drone stops rotating when exiting
+        drone->setLocalVelocity(0.0f, 0.0f, 0.0f, 0.0f);
         drone->log("Exiting search pole state");
     }
 
@@ -101,14 +113,13 @@ private:
     Drone* drone{nullptr};
     int current_pole;
     int total_poles;
+    std::string target_color;
+    bool go_right;
     float rotation_speed;
     float max_search_time;
+    float angular_velocity;
     
     std::chrono::high_resolution_clock::time_point start_time;
-    float initial_yaw;
-    float target_yaw;
-    Eigen::Vector3d search_position;
-    
-    bool pole_found;
-    bool search_complete;
+    bool pole_found{false};
+    int last_log_time{-1};
 };

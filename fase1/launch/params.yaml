@@ -7,27 +7,33 @@ fase1_fsm:
     
     # Slalom mission parameters
     total_poles: 4
-    rotation_speed: 0.5      # rad/s for searching poles
+    rotation_speed: 0.3      # rad/s for searching poles
     approach_speed: 0.8      # m/s for approaching poles
-    navigation_radius: 1.0   # m radius for circular navigation around poles
-    angular_velocity: 0.3    # rad/s for circular navigation
+    navigation_radius: 1.5   # m radius for circular navigation around poles
+    angular_velocity: 0.4    # rad/s for circular navigation
     return_speed: 1.0        # m/s for returning to middle
+    
+    # Pole color sequence (colors to traverse in order)
+    color_1: "Vermelho"          # First pole color
+    color_2: "Azul"      # Second pole color  
+    color_3: "Preto"         # Third pole color
+    color_4: "Rosa"          # Fourth pole color
     
     # Search parameters
     max_search_time: 30.0    # seconds max search time per pole
     
     # Approach parameters
-    goal_width: 0.3          # Target pole width in image (0.0-1.0)
-    max_approach_time: 20.0  # seconds max approach time
-    centering_tolerance: 0.05 # tolerance for pole centering (5%)
+    goal_width: 0.12          # Target pole width in image (0.0-1.0)
+    max_approach_time: 50.0  # seconds max approach time
+    centering_tolerance: 0.03 # tolerance for pole centering (5%)
     
     # PID parameters for approach
-    pid_yaw_kp: 1.0          # PID proportional gain for yaw control
-    pid_yaw_ki: 0.1          # PID integral gain for yaw control
+    pid_yaw_kp: -2.0          # PID proportional gain for yaw control
+    pid_yaw_ki: 0.01          # PID integral gain for yaw control
     pid_yaw_kd: 0.05         # PID derivative gain for yaw control
-    pid_width_kp: 0.5        # PID proportional gain for width control
-    pid_width_ki: 0.1        # PID integral gain for width control
-    pid_width_kd: 0.02       # PID derivative gain for width control
+    pid_distance_kp: -0.9        # PID proportional gain for distance control - NEGATIVE SIGN because we want to decrease distance
+    pid_distance_ki: 0.02        # PID integral gain for distance control
+    pid_distance_kd: 0.02       # PID derivative gain for distance control
     
     # Navigation parameters
     max_navigation_time: 45.0 # seconds max navigation time around pole

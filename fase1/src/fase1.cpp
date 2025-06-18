@@ -21,9 +21,10 @@ public:
               float navigation_radius, float angular_velocity, float return_speed,
               float max_search_time, float goal_width, float max_approach_time, 
               float centering_tolerance, float pid_yaw_kp, float pid_yaw_ki, 
-              float pid_yaw_kd, float pid_width_kp, float pid_width_ki, 
-              float pid_width_kd, float max_navigation_time, 
-              float position_tolerance, float max_return_time) 
+              float pid_yaw_kd, float pid_distance_kp, float pid_distance_ki, 
+              float pid_distance_kd, float max_navigation_time, 
+              float position_tolerance, float max_return_time,
+              const std::vector<std::string>& pole_colors) 
         : fsm::FSM({"ERROR", "FINISHED"}) {
 
         Drone* drone = new Drone();
@@ -57,9 +58,9 @@ public:
         this->blackboard_set<float>("pid_yaw_kp", pid_yaw_kp);
         this->blackboard_set<float>("pid_yaw_ki", pid_yaw_ki);
         this->blackboard_set<float>("pid_yaw_kd", pid_yaw_kd);
-        this->blackboard_set<float>("pid_width_kp", pid_width_kp);
-        this->blackboard_set<float>("pid_width_ki", pid_width_ki);
-        this->blackboard_set<float>("pid_width_kd", pid_width_kd);
+        this->blackboard_set<float>("pid_distance_kp", pid_distance_kp);
+        this->blackboard_set<float>("pid_distance_ki", pid_distance_ki);
+        this->blackboard_set<float>("pid_distance_kd", pid_distance_kd);
         
         // NAVIGATION PARAMETERS
         this->blackboard_set<float>("max_navigation_time", max_navigation_time);
@@ -71,6 +72,9 @@ public:
         // POLE DIRECTIONS (alternating sides: right, left, right, left)
         std::vector<bool> pole_directions = {true, false, true, false}; // true = right, false = left
         this->blackboard_set<std::vector<bool>>("pole_directions", pole_directions);
+        
+        // POLE COLORS (sequence of colors to traverse)
+        this->blackboard_set<std::vector<std::string>>("pole_colors", pole_colors);
 
         // STATES
         this->add_state("INITIAL TAKEOFF", std::make_unique<InitialTakeoffState>());
@@ -159,9 +163,9 @@ public:
         this->declare_parameter("pid_yaw_kp", 1.0);
         this->declare_parameter("pid_yaw_ki", 0.1);
         this->declare_parameter("pid_yaw_kd", 0.05);
-        this->declare_parameter("pid_width_kp", 0.5);
-        this->declare_parameter("pid_width_ki", 0.1);
-        this->declare_parameter("pid_width_kd", 0.02);
+        this->declare_parameter("pid_distance_kp", 0.5);
+        this->declare_parameter("pid_distance_ki", 0.1);
+        this->declare_parameter("pid_distance_kd", 0.02);
         
         // Declare navigation parameters
         this->declare_parameter("max_navigation_time", 45.0);
@@ -169,6 +173,12 @@ public:
         // Declare return parameters
         this->declare_parameter("position_tolerance", 0.3);
         this->declare_parameter("max_return_time", 30.0);
+        
+        // Declare pole color parameters
+        this->declare_parameter("color_1", "Rosa");
+        this->declare_parameter("color_2", "Vermelho");
+        this->declare_parameter("color_3", "Preto");
+        this->declare_parameter("color_4", "Azul");
 
         // Get parameter values
         float takeoff_height = this->get_parameter("takeoff_height").as_double();
@@ -189,12 +199,20 @@ public:
         float pid_yaw_kp = this->get_parameter("pid_yaw_kp").as_double();
         float pid_yaw_ki = this->get_parameter("pid_yaw_ki").as_double();
         float pid_yaw_kd = this->get_parameter("pid_yaw_kd").as_double();
-        float pid_width_kp = this->get_parameter("pid_width_kp").as_double();
-        float pid_width_ki = this->get_parameter("pid_width_ki").as_double();
-        float pid_width_kd = this->get_parameter("pid_width_kd").as_double();
+        float pid_distance_kp = this->get_parameter("pid_distance_kp").as_double();
+        float pid_distance_ki = this->get_parameter("pid_distance_ki").as_double();
+        float pid_distance_kd = this->get_parameter("pid_distance_kd").as_double();
         float max_navigation_time = this->get_parameter("max_navigation_time").as_double();
         float position_tolerance = this->get_parameter("position_tolerance").as_double();
         float max_return_time = this->get_parameter("max_return_time").as_double();
+        
+        // Get pole color parameters
+        std::vector<std::string> pole_colors = {
+            this->get_parameter("color_1").as_string(),
+            this->get_parameter("color_2").as_string(),
+            this->get_parameter("color_3").as_string(),
+            this->get_parameter("color_4").as_string()
+        };
         
         // Initialize the SlalomFSM with all parameters
         my_fsm = std::make_unique<SlalomFSM>(
@@ -202,8 +220,8 @@ public:
             total_poles, rotation_speed, approach_speed, navigation_radius,
             angular_velocity, return_speed, max_search_time, goal_width, 
             max_approach_time, centering_tolerance, pid_yaw_kp, pid_yaw_ki, 
-            pid_yaw_kd, pid_width_kp, pid_width_ki, pid_width_kd, 
-            max_navigation_time, position_tolerance, max_return_time
+            pid_yaw_kd, pid_distance_kp, pid_distance_ki, pid_distance_kd, 
+            max_navigation_time, position_tolerance, max_return_time, pole_colors
         );
         
         timer_ = this->create_wall_timer(

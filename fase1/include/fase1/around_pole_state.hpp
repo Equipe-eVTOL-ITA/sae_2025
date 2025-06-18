@@ -5,6 +5,8 @@
 #include <chrono>
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
+#include "fase1/PidController.hpp"
+#include "fase1/Detection.hpp"
 
 class AroundPoleState : public fsm::State {
 public:
@@ -17,53 +19,43 @@ public:
         current_pole = *blackboard.get<int>("current_pole");
         total_poles = *blackboard.get<int>("total_poles");
         
+        // Get current target color
+        auto pole_colors = *blackboard.get<std::vector<std::string>>("pole_colors");
+        target_color = pole_colors[current_pole];
+        
         // Get traversal direction for this pole
         auto pole_directions = *blackboard.get<std::vector<bool>>("pole_directions"); // true = right, false = left
         go_right = pole_directions[current_pole];
         
         drone->log("STATE: Going around pole " + std::to_string(current_pole + 1) + 
-                  " to the " + (go_right ? "RIGHT" : "LEFT"));
+                  " (" + target_color + ") to the " + (go_right ? "RIGHT" : "LEFT"));
 
         // Get navigation parameters
-        radius = *blackboard.get<float>("navigation_radius");
+        navigation_radius = *blackboard.get<float>("navigation_radius");
         angular_velocity = *blackboard.get<float>("angular_velocity");
         max_navigation_time = *blackboard.get<float>("max_navigation_time");
         
-        // Get current position and calculate pole position
-        current_pos = drone->getLocalPosition();
-        current_yaw = drone->getOrientation().z();
-        
-        // Estimate pole position from current drone position and yaw
-        // Assume we're at the correct distance from pole when we start
-        pole_position.x() = current_pos.x() + radius * std::cos(current_yaw);
-        pole_position.y() = current_pos.y() + radius * std::sin(current_yaw);
-        pole_position.z() = current_pos.z(); // Same altitude as drone
-        
-        // Calculate initial angle around pole
-        Eigen::Vector2d to_drone = Eigen::Vector2d(current_pos.x() - pole_position.x(), 
-                                                   current_pos.y() - pole_position.y());
-        initial_angle = std::atan2(to_drone.y(), to_drone.x());
-        current_angle = initial_angle;
-        
-        // Determine target angle (π radians = 180 degrees around pole)
+        // Set angular velocity direction based on traversal direction
         if (go_right) {
-            target_angle = initial_angle - M_PI; // Clockwise
-            angular_velocity = -std::abs(angular_velocity);
+            angular_velocity = -std::abs(angular_velocity); // Clockwise (negative)
         } else {
-            target_angle = initial_angle + M_PI; // Counter-clockwise
-            angular_velocity = std::abs(angular_velocity);
+            angular_velocity = std::abs(angular_velocity);  // Counter-clockwise (positive)
         }
         
-        // Normalize target angle
-        while (target_angle > M_PI) target_angle -= 2 * M_PI;
-        while (target_angle < -M_PI) target_angle += 2 * M_PI;
+        // Initialize PID controller for distance control (same parameters as approach_pole_state)
+        float kp_distance = *blackboard.get<float>("pid_distance_kp");
+        float ki_distance = *blackboard.get<float>("pid_distance_ki");
+        float kd_distance = *blackboard.get<float>("pid_distance_kd");
+        distance_pid = std::make_unique<PidController>(kp_distance, ki_distance, kd_distance, navigation_radius);
         
+        // Calculate total time needed for 210 degrees rotation
+        total_time = 7.0f * M_PI / (6.0f * std::abs(angular_velocity));
+                
         start_time = std::chrono::high_resolution_clock::now();
-        navigation_complete = false;
         
-        drone->log("Navigation: initial_angle=" + std::to_string(initial_angle) + 
-                  " target_angle=" + std::to_string(target_angle) + 
-                  " radius=" + std::to_string(radius));
+        drone->log("Navigation: angular_velocity=" + std::to_string(angular_velocity) + 
+                  " rad/s, total_time=" + std::to_string(total_time) + 
+                  "s, navigation_radius=" + std::to_string(navigation_radius) + "m");
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
@@ -71,58 +63,58 @@ public:
 
         auto current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> elapsed = current_time - start_time;
-        float dt = 0.05f; // 50ms update rate
         
         // Check for timeout
         if (elapsed.count() > max_navigation_time) {
             drone->log("Navigation timeout");
             return "NAVIGATION_TIMEOUT";
         }
-
-        // Update current angle
-        current_angle += angular_velocity * dt;
         
-        // Check if we've completed the semicircle
-        float angle_progress;
-        if (go_right) {
-            angle_progress = initial_angle - current_angle;
-        } else {
-            angle_progress = current_angle - initial_angle;
-        }
-        
-        // Normalize angle progress
-        while (angle_progress > M_PI) angle_progress -= 2 * M_PI;
-        while (angle_progress < -M_PI) angle_progress += 2 * M_PI;
-        
-        // Check if we've completed approximately π radians (180 degrees)
-        if (std::abs(angle_progress) >= M_PI * 0.9f) { // 90% of π to account for some error
-            drone->log("Completed semicircle around pole");
+        // Check if rotation is complete based on time
+        if (elapsed.count() >= total_time) {
+            drone->log("Completed 210° navigation around pole (time-based)");
+            // Stop the drone
+            drone->setLocalVelocity(0, 0, 0, 0);
             return "NAVIGATION_COMPLETE";
         }
+
+        float current_yaw = drone->getOrientation().z();
         
-        // Calculate new position on circle
-        Eigen::Vector3d new_pos;
-        new_pos.x() = pole_position.x() + radius * std::cos(current_angle);
-        new_pos.y() = pole_position.y() + radius * std::sin(current_angle);
-        new_pos.z() = current_pos.z(); // Maintain altitude
+        // Calculate tangential velocity
+        float v_tangent = - navigation_radius * angular_velocity;
         
-        // Calculate yaw to face tangent to circle (forward direction of movement)
-        float tangent_yaw = current_angle + (go_right ? -M_PI/2 : M_PI/2);
+        // Calculate normal velocity using PID control for distance correction
+        float v_normal = 0.0f;
         
-        // Normalize yaw
-        while (tangent_yaw > M_PI) tangent_yaw -= 2 * M_PI;
-        while (tangent_yaw < -M_PI) tangent_yaw += 2 * M_PI;
+        // Update pole position estimate if we have pole detection
+        auto post_detections = drone->getPostDetections();
+        Detection detection(post_detections, target_color);
         
-        // Apply new position and orientation
-        drone->setLocalPosition(new_pos.x(), new_pos.y(), new_pos.z(), tangent_yaw);
+        if (detection.isThereDetection()) {
+            // Refine pole position using detection
+            DronePX4::BoundingBox current_detection = detection.getClosestBbox();
+            float goal_width = *blackboard.get<float>("goal_width");
+            float estimated_distance = goal_width / current_detection.size_x * navigation_radius;
+            
+            v_normal = distance_pid->compute(estimated_distance);
+        }
+
+        drone->log("Yaw: " + std::to_string(current_yaw) +
+                  ", vt: " + std::to_string(v_tangent) +
+                  ", vn: " + std::to_string(v_normal));
         
-        // Update current position for next iteration
-        current_pos = new_pos;
-        current_yaw = tangent_yaw;
+        float vx = v_normal * std::cos(current_yaw) - v_tangent * std::sin(current_yaw);
+        float vy = v_normal * std::sin(current_yaw) + v_tangent * std::cos(current_yaw);
+
+        drone->log("vx=" + std::to_string(vx) + ", vy=" + std::to_string(vy));
+        
+        drone->setLocalVelocity(vx, vy, 0, 0.9*angular_velocity);
         
         // Log progress occasionally
         if ((int)(elapsed.count() * 4) % 20 == 0) { // Every 5 seconds
-            drone->log("Navigation progress: " + std::to_string(std::abs(angle_progress) * 180 / M_PI) + " degrees");
+            float progress_percent = elapsed.count() / total_time * 100.0f;
+            drone->log("Navigation progress: " + std::to_string(progress_percent) + 
+                      "% (" + std::to_string(elapsed.count()) + "s / " + std::to_string(total_time) + "s)");
         }
 
         return "";
@@ -142,19 +134,14 @@ private:
     int current_pole;
     int total_poles;
     bool go_right;
+    std::string target_color;
     
-    float radius;
+    float navigation_radius;
     float angular_velocity;
     float max_navigation_time;
+    float total_time; // Time needed for 210° rotation
     
-    Eigen::Vector3d current_pos;
-    Eigen::Vector3d pole_position;
-    float current_yaw;
-    
-    float initial_angle;
-    float current_angle;
-    float target_angle;
-    
+    std::unique_ptr<PidController> distance_pid; // Same PID as approach_pole_state
+        
     std::chrono::high_resolution_clock::time_point start_time;
-    bool navigation_complete;
 };

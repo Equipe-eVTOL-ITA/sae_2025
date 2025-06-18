@@ -7,6 +7,7 @@ fase1_fsm:
     
     # Slalom mission parameters
     total_poles: 4
+    first_go_right: true
     rotation_speed: 0.3      # rad/s for searching poles
     approach_speed: 0.8      # m/s for approaching poles
     navigation_radius: 1.5   # m radius for circular navigation around poles
@@ -29,17 +30,17 @@ fase1_fsm:
     
     # PID parameters for approach
     pid_yaw_kp: -2.0          # PID proportional gain for yaw control
-    pid_yaw_ki: 0.01          # PID integral gain for yaw control
-    pid_yaw_kd: 0.05         # PID derivative gain for yaw control
-    pid_distance_kp: -0.9        # PID proportional gain for distance control - NEGATIVE SIGN because we want to decrease distance
-    pid_distance_ki: 0.02        # PID integral gain for distance control
-    pid_distance_kd: 0.02       # PID derivative gain for distance control
+    pid_yaw_ki: -0.03          # PID integral gain for yaw control
+    pid_yaw_kd: -0.05         # PID derivative gain for yaw control
+    pid_distance_kp: -0.35        # PID proportional gain for distance control - NEGATIVE SIGN because we want to decrease distance
+    pid_distance_ki: -0.03        # PID integral gain for distance control
+    pid_distance_kd: -0.02       # PID derivative gain for distance control
     
     # Navigation parameters
     max_navigation_time: 45.0 # seconds max navigation time around pole
     
     # Return parameters
-    position_tolerance: 0.3   # meters tolerance for return position
+    position_tolerance: 0.1   # meters tolerance for return position
     max_return_time: 30.0     # seconds max return time
 
 landing_base_detector:
@@ -55,41 +56,41 @@ post_detector:
     confidence_threshold: 0.3
     
     # Morphological operations parameters
-    min_area: 300  # Increased to filter out small sky patches
+    min_area: 600  # Increased to filter out small sky patches
     morph_kernel_size: 5
     morph_iterations: 2
     
     # Post detection constraints - Posts are vertical: 0.1m diameter, 2.5m height
     min_aspect_ratio: 0.02  # Very thin vertical objects (width/height)
-    max_aspect_ratio: 0.8   # Still vertical, but allow some perspective distortion
+    max_aspect_ratio: 1.0   # Still vertical, but allow some perspective distortion
     
     # HSV Color ranges for post detection - Made more restrictive to avoid sky
     # Preto (Black) - Low value for dark/black colors
     preto_lower_h: 0
-    preto_lower_s: 0
-    preto_lower_v: 0
+    preto_lower_s: 20
+    preto_lower_v: 10
     preto_upper_h: 180
     preto_upper_s: 255
-    preto_upper_v: 50  # Reduced from 60 to avoid shadows
+    preto_upper_v: 52  # Reduced from 60 to avoid shadows
     
     # Azul (Blue) - Slightly less restrictive but still avoiding sky
     azul_lower_h: 105  # Slightly wider hue range
-    azul_lower_s: 110  # Reduced saturation requirement
+    azul_lower_s: 140  # Reduced saturation requirement
     azul_lower_v: 85   # Reduced value requirement
     azul_upper_h: 125  # Slightly wider hue range
     azul_upper_s: 255
-    azul_upper_v: 255
+    azul_upper_v: 220
     
     # Vermelho (Red) - Two ranges due to HSV wrap-around
     vermelho_lower1_h: 0
-    vermelho_lower1_s: 50
-    vermelho_lower1_v: 50
+    vermelho_lower1_s: 60
+    vermelho_lower1_v: 100
     vermelho_upper1_h: 10
     vermelho_upper1_s: 255
     vermelho_upper1_v: 255
     vermelho_lower2_h: 170
-    vermelho_lower2_s: 50
-    vermelho_lower2_v: 50
+    vermelho_lower2_s: 60
+    vermelho_lower2_v: 100
     vermelho_upper2_h: 180
     vermelho_upper2_s: 255
     vermelho_upper2_v: 255

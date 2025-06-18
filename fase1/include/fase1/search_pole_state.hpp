@@ -14,6 +14,7 @@ public:
     void on_enter(fsm::Blackboard &blackboard) override {
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
+        drone->log("STATE: SEARCH POLE");
 
         // Get pole number we're searching for (0-3)
         current_pole = *blackboard.get<int>("current_pole");
@@ -26,10 +27,6 @@ public:
         // Get pole direction for current pole (true = right, false = left)
         auto pole_directions = *blackboard.get<std::vector<bool>>("pole_directions");
         go_right = pole_directions[current_pole];
-        
-        drone->log("STATE: Searching for pole " + std::to_string(current_pole + 1) + "/" + 
-                  std::to_string(total_poles) + " (Color: " + target_color + 
-                  ", Direction: " + (go_right ? "RIGHT" : "LEFT") + ")");
 
         // Get rotation parameters
         rotation_speed = *blackboard.get<float>("rotation_speed");
@@ -40,18 +37,19 @@ public:
         // If going left around pole: rotate counter-clockwise (positive angular velocity) to find it
         if (go_right) {
             angular_velocity = std::abs(rotation_speed); // Clockwise (negative)
-            drone->log("Rotating CLOCKWISE to find pole on the RIGHT");
+            drone->log("Searching for pole " + std::to_string(current_pole + 1) + "/" + 
+                  std::to_string(total_poles) + " (Color: " + target_color + 
+                    ") to the right (CLOCKWISE)");
         } else {
             angular_velocity = -std::abs(rotation_speed);  // Counter-clockwise (positive)
-            drone->log("Rotating COUNTER-CLOCKWISE to find pole on the LEFT");
+            drone->log("Searching for pole " + std::to_string(current_pole + 1) + "/" + 
+                  std::to_string(total_poles) + " (Color: " + target_color + 
+                    ") to the left (ANTI-CLOCKWISE)");
         }
         
         start_time = std::chrono::high_resolution_clock::now();
         pole_found = false;
         last_log_time = -1;
-        
-        drone->log("Search parameters: angular_velocity=" + std::to_string(angular_velocity) + 
-                  " rad/s, max_search_time=" + std::to_string(max_search_time) + "s");
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
@@ -88,15 +86,6 @@ public:
         } else {
             // Continue rotating to search for the pole
             drone->setLocalVelocity(0.0f, 0.0f, 0.0f, angular_velocity);
-            
-            // Log search progress every 5 seconds
-            if (static_cast<int>(elapsed.count()) % 5 == 0 && 
-                static_cast<int>(elapsed.count()) != last_log_time) {
-                last_log_time = static_cast<int>(elapsed.count());
-                drone->log("Searching for " + target_color + " pole... " + 
-                          std::to_string(static_cast<int>(elapsed.count())) + "/" + 
-                          std::to_string(static_cast<int>(max_search_time)) + "s");
-            }
         }
 
         return "";
@@ -104,9 +93,7 @@ public:
 
     void on_exit(fsm::Blackboard &blackboard) override {
         (void)blackboard;
-        // Ensure drone stops rotating when exiting
         drone->setLocalVelocity(0.0f, 0.0f, 0.0f, 0.0f);
-        drone->log("Exiting search pole state");
     }
 
 private:

@@ -15,6 +15,7 @@ public:
     void on_enter(fsm::Blackboard &blackboard) override {
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
+        drone->log("STATE: AROUND POLE");
 
         current_pole = *blackboard.get<int>("current_pole");
         total_poles = *blackboard.get<int>("total_poles");
@@ -27,7 +28,7 @@ public:
         auto pole_directions = *blackboard.get<std::vector<bool>>("pole_directions"); // true = right, false = left
         go_right = pole_directions[current_pole];
         
-        drone->log("STATE: Going around pole " + std::to_string(current_pole + 1) + 
+        drone->log("pole " + std::to_string(current_pole + 1) + 
                   " (" + target_color + ") to the " + (go_right ? "RIGHT" : "LEFT"));
 
         // Get navigation parameters
@@ -48,14 +49,10 @@ public:
         float kd_distance = *blackboard.get<float>("pid_distance_kd");
         distance_pid = std::make_unique<PidController>(kp_distance, ki_distance, kd_distance, navigation_radius);
         
-        // Calculate total time needed for 210 degrees rotation
-        total_time = 7.0f * M_PI / (6.0f * std::abs(angular_velocity));
+        // Calculate total time needed for 230 degrees rotation
+        total_time = 22.0f * M_PI / (18.0f * std::abs(angular_velocity));
                 
         start_time = std::chrono::high_resolution_clock::now();
-        
-        drone->log("Navigation: angular_velocity=" + std::to_string(angular_velocity) + 
-                  " rad/s, total_time=" + std::to_string(total_time) + 
-                  "s, navigation_radius=" + std::to_string(navigation_radius) + "m");
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
@@ -79,16 +76,15 @@ public:
         }
 
         float current_yaw = drone->getOrientation().z();
-        
-        // Calculate tangential velocity
-        float v_tangent = - navigation_radius * angular_velocity;
-        
+                
         // Calculate normal velocity using PID control for distance correction
         float v_normal = 0.0f;
         
         // Update pole position estimate if we have pole detection
         auto post_detections = drone->getPostDetections();
         Detection detection(post_detections, target_color);
+
+        float v_tangent = - navigation_radius * angular_velocity;
         
         if (detection.isThereDetection()) {
             // Refine pole position using detection
@@ -97,25 +93,19 @@ public:
             float estimated_distance = goal_width / current_detection.size_x * navigation_radius;
             
             v_normal = distance_pid->compute(estimated_distance);
+            v_tangent = - estimated_distance * angular_velocity;
         }
 
-        drone->log("Yaw: " + std::to_string(current_yaw) +
-                  ", vt: " + std::to_string(v_tangent) +
-                  ", vn: " + std::to_string(v_normal));
+        // drone->log("Yaw: " + std::to_string(current_yaw) +
+        //           ", vt: " + std::to_string(v_tangent) +
+        //           ", vn: " + std::to_string(v_normal));
         
         float vx = v_normal * std::cos(current_yaw) - v_tangent * std::sin(current_yaw);
         float vy = v_normal * std::sin(current_yaw) + v_tangent * std::cos(current_yaw);
 
-        drone->log("vx=" + std::to_string(vx) + ", vy=" + std::to_string(vy));
+        // drone->log("vx=" + std::to_string(vx) + ", vy=" + std::to_string(vy));
         
-        drone->setLocalVelocity(vx, vy, 0, 0.9*angular_velocity);
-        
-        // Log progress occasionally
-        if ((int)(elapsed.count() * 4) % 20 == 0) { // Every 5 seconds
-            float progress_percent = elapsed.count() / total_time * 100.0f;
-            drone->log("Navigation progress: " + std::to_string(progress_percent) + 
-                      "% (" + std::to_string(elapsed.count()) + "s / " + std::to_string(total_time) + "s)");
-        }
+        drone->setLocalVelocity(vx, vy, 0, 0.83 * angular_velocity);
 
         return "";
     }
@@ -124,9 +114,6 @@ public:
         // Increment pole counter
         int next_pole = current_pole + 1;
         blackboard.set<int>("current_pole", next_pole);
-        
-        drone->log("Completed navigation around pole " + std::to_string(current_pole + 1) + 
-                  ". Next pole: " + std::to_string(next_pole + 1));
     }
 
 private:

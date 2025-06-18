@@ -22,7 +22,6 @@ public:
         (void)blackboard;
 
         if (current_pole < total_poles) {
-            drone->log("Continuing to next pole: " + std::to_string(current_pole + 1));
             return "CONTINUE_MISSION";
         } else {
             drone->log("All poles completed - mission complete!");

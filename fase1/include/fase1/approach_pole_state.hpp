@@ -15,6 +15,7 @@ public:
     void on_enter(fsm::Blackboard &blackboard) override {
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
+        drone->log("STATE: APPROACH POLE");
 
         current_pole = *blackboard.get<int>("current_pole");
         
@@ -22,7 +23,7 @@ public:
         auto pole_colors = *blackboard.get<std::vector<std::string>>("pole_colors");
         target_color = pole_colors[current_pole];
         
-        drone->log("STATE: Approaching pole " + std::to_string(current_pole + 1) + " (Color: " + target_color + ")");
+        drone->log("Approaching pole " + std::to_string(current_pole + 1) + " (Color: " + target_color + ")");
 
         // Get approach parameters
         goal_width = *blackboard.get<float>("goal_width");
@@ -124,11 +125,6 @@ public:
         }
 
         return "";
-    }
-
-    void on_exit(fsm::Blackboard &blackboard) override {
-        (void)blackboard;
-        drone->log("Exiting approach pole state");
     }
 
 private:

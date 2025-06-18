@@ -17,7 +17,7 @@
 class SlalomFSM : public fsm::FSM {
 public:
     SlalomFSM(float takeoff_height, float max_vertical_velocity, float max_horizontal_velocity, 
-              int total_poles, float rotation_speed, float approach_speed, 
+              int total_poles, bool first_go_right, float rotation_speed, float approach_speed, 
               float navigation_radius, float angular_velocity, float return_speed,
               float max_search_time, float goal_width, float max_approach_time, 
               float centering_tolerance, float pid_yaw_kp, float pid_yaw_ki, 
@@ -69,8 +69,10 @@ public:
         this->blackboard_set<float>("position_tolerance", position_tolerance);
         this->blackboard_set<float>("max_return_time", max_return_time);
         
-        // POLE DIRECTIONS (alternating sides: right, left, right, left)
-        std::vector<bool> pole_directions = {true, false, true, false}; // true = right, false = left
+        // POLE DIRECTIONS
+        std::vector<bool> pole_directions = first_go_right
+            ? std::vector<bool>{true, false, true, false}
+            : std::vector<bool>{false, true, false, true};
         this->blackboard_set<std::vector<bool>>("pole_directions", pole_directions);
         
         // POLE COLORS (sequence of colors to traverse)
@@ -145,6 +147,7 @@ public:
         
         // Declare slalom mission parameters
         this->declare_parameter("total_poles", 4);
+        this->declare_parameter("first_go_right", true);
         this->declare_parameter("rotation_speed", 0.5);
         this->declare_parameter("approach_speed", 0.5);
         this->declare_parameter("navigation_radius", 1.5);
@@ -185,6 +188,7 @@ public:
         float max_vertical_velocity = this->get_parameter("max_vertical_velocity").as_double();
         float max_horizontal_velocity = this->get_parameter("max_horizontal_velocity").as_double();
         int total_poles = this->get_parameter("total_poles").as_int();
+        bool first_go_right = this->get_parameter("first_go_right").as_bool();
         float rotation_speed = this->get_parameter("rotation_speed").as_double();
         float approach_speed = this->get_parameter("approach_speed").as_double();
         float navigation_radius = this->get_parameter("navigation_radius").as_double();
@@ -217,7 +221,7 @@ public:
         // Initialize the SlalomFSM with all parameters
         my_fsm = std::make_unique<SlalomFSM>(
             takeoff_height, max_vertical_velocity, max_horizontal_velocity, 
-            total_poles, rotation_speed, approach_speed, navigation_radius,
+            total_poles, first_go_right, rotation_speed, approach_speed, navigation_radius,
             angular_velocity, return_speed, max_search_time, goal_width, 
             max_approach_time, centering_tolerance, pid_yaw_kp, pid_yaw_ki, 
             pid_yaw_kd, pid_distance_kp, pid_distance_ki, pid_distance_kd, 

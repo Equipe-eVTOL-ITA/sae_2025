@@ -9,5 +9,5 @@ fase3_fsm:
 
 landing_base_detector:
   ros__parameters:
-    image_topic: '/vertical_camera/compressed'
+    image_topic: '/camera/compressed'
     model: 'bases_v0'

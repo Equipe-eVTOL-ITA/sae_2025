@@ -18,7 +18,8 @@ setup(
             'landing_base_detector = landing_base_detector.landing_base_detector:main',
             'post_detector = slalom.post_detector:main',
             'blueline_detector = hook.blueline:main',
-            'mangueira_detector = hook.mangueira:main'
+            'mangueira_detector = hook.mangueira:main',
+            'hsv_calibration = hsv_calibration.hsv_calibration:main'
         ],
     }
 )

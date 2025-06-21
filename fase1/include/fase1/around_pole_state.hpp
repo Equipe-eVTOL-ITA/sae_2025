@@ -35,6 +35,8 @@ public:
         navigation_radius = *blackboard.get<float>("navigation_radius");
         angular_velocity = *blackboard.get<float>("angular_velocity");
         max_navigation_time = *blackboard.get<float>("max_navigation_time");
+        total_rotation_angle = *blackboard.get<float>("total_rotation_angle");
+        yaw_multiplier = *blackboard.get<float>("yaw_multiplier");
         
         // Set angular velocity direction based on traversal direction
         if (go_right) {
@@ -49,8 +51,7 @@ public:
         float kd_distance = *blackboard.get<float>("pid_distance_kd");
         distance_pid = std::make_unique<PidController>(kp_distance, ki_distance, kd_distance, navigation_radius);
         
-        // Calculate total time needed for 230 degrees rotation
-        total_time = 22.0f * M_PI / (18.0f * std::abs(angular_velocity));
+        total_time = total_rotation_angle / std::abs(angular_velocity);
                 
         start_time = std::chrono::high_resolution_clock::now();
     }
@@ -91,9 +92,13 @@ public:
             DronePX4::BoundingBox current_detection = detection.getClosestBbox();
             float goal_width = *blackboard.get<float>("goal_width");
             float estimated_distance = goal_width / current_detection.size_x * navigation_radius;
-            
-            v_normal = distance_pid->compute(estimated_distance);
-            v_tangent = - estimated_distance * angular_velocity;
+
+            if (current_detection.size_x < 0.3f){
+                v_normal = 0.0f;
+            }
+            else{
+                v_normal = distance_pid->compute(estimated_distance);
+            }
         }
 
         // drone->log("Yaw: " + std::to_string(current_yaw) +
@@ -105,7 +110,7 @@ public:
 
         // drone->log("vx=" + std::to_string(vx) + ", vy=" + std::to_string(vy));
         
-        drone->setLocalVelocity(vx, vy, 0, 0.83 * angular_velocity);
+        drone->setLocalVelocity(vx, vy, 0, yaw_multiplier * angular_velocity);
 
         return "";
     }
@@ -126,9 +131,13 @@ private:
     float navigation_radius;
     float angular_velocity;
     float max_navigation_time;
-    float total_time; // Time needed for 210° rotation
+    float total_time;
+    float total_rotation_angle;
+    float yaw_multiplier;
     
-    std::unique_ptr<PidController> distance_pid; // Same PID as approach_pole_state
+    std::unique_ptr<PidController> distance_pid;
         
     std::chrono::high_resolution_clock::time_point start_time;
 };
+
+

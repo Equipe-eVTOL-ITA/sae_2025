@@ -36,12 +36,12 @@ public:
         // If going right around pole: rotate clockwise (negative angular velocity) to find it
         // If going left around pole: rotate counter-clockwise (positive angular velocity) to find it
         if (go_right) {
-            angular_velocity = std::abs(rotation_speed); // Clockwise (negative)
+            angular_velocity = -std::abs(rotation_speed); // Clockwise (negative)
             drone->log("Searching for pole " + std::to_string(current_pole + 1) + "/" + 
                   std::to_string(total_poles) + " (Color: " + target_color + 
                     ") to the right (CLOCKWISE)");
         } else {
-            angular_velocity = -std::abs(rotation_speed);  // Counter-clockwise (positive)
+            angular_velocity = std::abs(rotation_speed);  // Counter-clockwise (positive)
             drone->log("Searching for pole " + std::to_string(current_pole + 1) + "/" + 
                   std::to_string(total_poles) + " (Color: " + target_color + 
                     ") to the left (ANTI-CLOCKWISE)");

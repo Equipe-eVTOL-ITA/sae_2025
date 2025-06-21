@@ -4,6 +4,7 @@
 #include "fase1/around_pole_state.hpp"
 #include "fase1/return_middle_state.hpp"
 #include "fase1/check_next_pole_state.hpp"
+#include "fase1/lost_state.hpp"
 #include "drone/Drone.hpp"
 #include "fsm/fsm.hpp"
 #include "fase1/landing_state.hpp"
@@ -23,7 +24,8 @@ public:
               float centering_tolerance, float pid_yaw_kp, float pid_yaw_ki, 
               float pid_yaw_kd, float pid_distance_kp, float pid_distance_ki, 
               float pid_distance_kd, float max_navigation_time, 
-              float position_tolerance, float max_return_time,
+              float position_tolerance, float max_return_time, float total_rotation_angle,
+              float yaw_multiplier, float lost_angle,
               const std::vector<std::string>& pole_colors) 
         : fsm::FSM({"ERROR", "FINISHED"}) {
 
@@ -69,6 +71,11 @@ public:
         this->blackboard_set<float>("position_tolerance", position_tolerance);
         this->blackboard_set<float>("max_return_time", max_return_time);
         
+        // NEW PARAMETERS FOR V2
+        this->blackboard_set<float>("total_rotation_angle", total_rotation_angle);
+        this->blackboard_set<float>("yaw_multiplier", yaw_multiplier);
+        this->blackboard_set<float>("lost_angle", lost_angle);
+        
         // POLE DIRECTIONS
         std::vector<bool> pole_directions = first_go_right
             ? std::vector<bool>{true, false, true, false}
@@ -85,6 +92,7 @@ public:
         this->add_state("AROUND POLE", std::make_unique<AroundPoleState>());
         this->add_state("RETURN MIDDLE", std::make_unique<ReturnMiddleState>());
         this->add_state("FINAL LANDING", std::make_unique<LandingState>());
+        this->add_state("LOST", std::make_unique<LostState>());
 
         // Initial Takeoff transitions
         this->add_transitions("INITIAL TAKEOFF", {
@@ -125,7 +133,15 @@ public:
         // Return Middle transitions
         this->add_transitions("RETURN MIDDLE", {
             {"RETURN_COMPLETE", "FINAL LANDING"},
-            {"RETURN_TIMEOUT", "FINAL LANDING"}, // Land even if not perfectly centered
+            {"RETURN_TIMEOUT_COMPLETE", "FINAL LANDING"}, // Land even if not perfectly centered
+            {"RETURN_TO_LOST", "LOST"},
+            {"RETURN_TIMEOUT_LOST", "LOST"},
+            {"SEG FAULT", "ERROR"}
+        });
+
+        // Lost state transitions
+        this->add_transitions("LOST", {
+            {"POLE_FOUND", "SEARCH POLE"},
             {"SEG FAULT", "ERROR"}
         });
 
@@ -177,6 +193,11 @@ public:
         this->declare_parameter("position_tolerance", 0.3);
         this->declare_parameter("max_return_time", 30.0);
         
+        // Declare new parameters for v2
+        this->declare_parameter("total_rotation_angle", 200.0 * M_PI / 180.0); // 200 degrees in radians
+        this->declare_parameter("yaw_multiplier", 0.9);
+        this->declare_parameter("lost_angle", M_PI / 3.0); // 60 degrees in radians
+        
         // Declare pole color parameters
         this->declare_parameter("color_1", "Rosa");
         this->declare_parameter("color_2", "Vermelho");
@@ -210,6 +231,11 @@ public:
         float position_tolerance = this->get_parameter("position_tolerance").as_double();
         float max_return_time = this->get_parameter("max_return_time").as_double();
         
+        // Get new v2 parameters
+        float total_rotation_angle = this->get_parameter("total_rotation_angle").as_double();
+        float yaw_multiplier = this->get_parameter("yaw_multiplier").as_double();
+        float lost_angle = this->get_parameter("lost_angle").as_double();
+        
         // Get pole color parameters
         std::vector<std::string> pole_colors = {
             this->get_parameter("color_1").as_string(),
@@ -225,7 +251,8 @@ public:
             angular_velocity, return_speed, max_search_time, goal_width, 
             max_approach_time, centering_tolerance, pid_yaw_kp, pid_yaw_ki, 
             pid_yaw_kd, pid_distance_kp, pid_distance_ki, pid_distance_kd, 
-            max_navigation_time, position_tolerance, max_return_time, pole_colors
+            max_navigation_time, position_tolerance, max_return_time, 
+            total_rotation_angle, yaw_multiplier, lost_angle, pole_colors
         );
         
         timer_ = this->create_wall_timer(

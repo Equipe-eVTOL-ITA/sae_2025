@@ -16,12 +16,6 @@ def generate_launch_description():
         default_value="fase2",
         description="Executable that implements the mission FSM")
 
-    detector_node = Node(
-        package='sae_cv_utils',
-        executable='landing_base_detector',
-        parameters=[params]
-    )
-
     blueline_detector_node = Node(
         package='sae_cv_utils',
         executable='blueline_detector',
@@ -61,7 +55,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         exec_arg,
-        detector_node,
         blueline_detector_node,
         mangueira_detector_node,
         bridge_node,

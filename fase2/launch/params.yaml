@@ -1,16 +1,89 @@
 fase2_fsm:
   ros__parameters:
+    # Takeoff parameters
     takeoff_height: -3.0
     max_vertical_velocity: 1.0
     max_horizontal_velocity: 1.0
     classe_base_pouso: "4.0"
-    spiral_radius_initial: 1.5
-    spiral_radius_limit: 5.0
-
-landing_base_detector:
-  ros__parameters:
-    image_topic: '/vertical_camera/compressed'
-    model: 'bases_v0'
+    
+    # Line following parameters
+    line_follow_height: -3.0
+    line_follow_velocity: 0.8
+    line_follow_timeout: 120.0
+    
+    # PID parameters for line following (6 parameters: 3 translation + 3 yaw)
+    line_follow_lateral_kp: 1.2
+    line_follow_lateral_ki: 0.1
+    line_follow_lateral_kd: 0.3
+    
+    line_follow_height_kp: 0.8
+    line_follow_height_ki: 0.02
+    line_follow_height_kd: 0.1
+    
+    line_follow_yaw_kp: 1.0
+    line_follow_yaw_ki: 0.05
+    line_follow_yaw_kd: 0.2
+    
+    # Hose alignment parameters
+    hose_align_height: -2.5
+    hose_center_tolerance: 0.05
+    hose_stability_threshold: 0.03
+    hose_stability_count: 10
+    hose_alignment_timeout: 30.0
+    payload_drop_delay: 2.0
+    
+    # PID parameters for hose alignment (6 parameters: 3 translation + 3 yaw)
+    hose_align_lateral_kp: 1.5
+    hose_align_lateral_ki: 0.1
+    hose_align_lateral_kd: 0.4
+    
+    hose_align_vertical_kp: 1.2
+    hose_align_vertical_ki: 0.1
+    hose_align_vertical_kd: 0.3
+    
+    hose_align_yaw_kp: 0.8
+    hose_align_yaw_ki: 0.0
+    hose_align_yaw_kd: 0.2
+    
+    # Return home parameters
+    return_velocity: 1.2
+    return_height: -4.0
+    home_reach_tolerance: 1.0
+    return_timeout: 60.0
+    
+    # Home alignment parameters
+    home_center_tolerance: 0.08
+    home_min_bbox_size: 0.1
+    home_max_bbox_size: 0.8
+    home_alignment_timeout: 45.0
+    
+    # PID parameters for home alignment (8 parameters: 4 translation + 4 for distance/yaw)
+    home_align_lateral_kp: 1.5
+    home_align_lateral_ki: 0.1
+    home_align_lateral_kd: 0.4
+    
+    home_align_vertical_kp: 1.2
+    home_align_vertical_ki: 0.1
+    home_align_vertical_kd: 0.3
+    
+    home_align_distance_kp: 0.8
+    home_align_distance_ki: 0.1
+    home_align_distance_kd: 0.2
+    
+    home_align_yaw_kp: 0.8
+    home_align_yaw_ki: 0.0
+    home_align_yaw_kd: 0.2
+    
+    # Landing parameters
+    landing_descent_velocity: -0.3
+    landing_final_velocity: -0.1
+    landing_final_height: -0.5
+    landing_timeout: 30.0
+    
+    # General timeouts and thresholds
+    detection_timeout: 5.0
+    position_tolerance: 0.2
+    velocity_tolerance: 0.1
 
 # Blue line detector parameters
 blueline_detector:

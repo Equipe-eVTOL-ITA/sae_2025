@@ -422,6 +422,48 @@ Drone::Drone() {
 		});
 	}
 
+	// Line and hose detection subscriptions for Fase2
+	if (subscription_state_.line_detection_active) {
+		// Subscribe to line centroid
+		this->line_centroid_sub_ = this->px4_node_->create_subscription<geometry_msgs::msg::PointStamped>(
+			"/blueline/centroid",
+			custom_qos,
+			[this](geometry_msgs::msg::PointStamped::SharedPtr msg) {
+				this->total_message_count_++;
+				this->line_detection_data_.has_detection = true;
+				this->line_detection_data_.centroid_x = msg->point.x;
+				this->line_detection_data_.centroid_y = msg->point.y;
+				this->line_detection_data_.confidence = msg->point.z;  // Confidence in z field
+				this->line_detection_data_.last_update = std::chrono::steady_clock::now();
+			}
+		);
+		
+		// Subscribe to line direction
+		this->line_direction_sub_ = this->px4_node_->create_subscription<geometry_msgs::msg::Vector3Stamped>(
+			"/blueline/direction",
+			custom_qos,
+			[this](geometry_msgs::msg::Vector3Stamped::SharedPtr msg) {
+				this->total_message_count_++;
+				this->line_detection_data_.direction_angle = msg->vector.z; // Angle in radians stored in z
+			}
+		);
+	}
+
+	if (subscription_state_.hose_detection_active) {
+		this->hose_detection_sub_ = this->px4_node_->create_subscription<geometry_msgs::msg::PointStamped>(
+			"/mangueira/position",
+			custom_qos,
+			[this](geometry_msgs::msg::PointStamped::SharedPtr msg) {
+				this->total_message_count_++;
+				this->hose_detection_data_.has_detection = true;
+				this->hose_detection_data_.position_x = msg->point.x;
+				this->hose_detection_data_.position_y = msg->point.y;
+				this->hose_detection_data_.confidence = msg->point.z;  // Confidence in z field
+				this->hose_detection_data_.last_update = std::chrono::steady_clock::now();
+			}
+		);
+	}
+
 	this->position_pub_ = this->px4_node_->create_publisher<custom_msgs::msg::Position>(
 		"/position", custom_qos);
 
@@ -921,6 +963,39 @@ std::string Drone::readQRCode(){
 	return qr_code_data_;
 }
 
+// Line and hose detection interface methods for Fase2
+Drone::LineDetectionData Drone::getLineDetection() {
+	return line_detection_data_;
+}
+
+Drone::HoseDetectionData Drone::getHoseDetection() {
+	return hose_detection_data_;
+}
+
+bool Drone::isLineDetectionRecent(double timeout_seconds) {
+	if (!line_detection_data_.has_detection) {
+		return false;
+	}
+	
+	auto current_time = std::chrono::steady_clock::now();
+	auto time_since_detection = std::chrono::duration_cast<std::chrono::milliseconds>(
+		current_time - line_detection_data_.last_update).count();
+	
+	return time_since_detection < (timeout_seconds * 1000.0);
+}
+
+bool Drone::isHoseDetectionRecent(double timeout_seconds) {
+	if (!hose_detection_data_.has_detection) {
+		return false;
+	}
+	
+	auto current_time = std::chrono::steady_clock::now();
+	auto time_since_detection = std::chrono::duration_cast<std::chrono::milliseconds>(
+		current_time - hose_detection_data_.last_update).count();
+	
+	return time_since_detection < (timeout_seconds * 1000.0);
+}
+
 //Coordinate System transformations (private functions)
 
 Eigen::Vector3d Drone::convertPositionNEDtoFRD(const Eigen::Vector3d& position_ned) const
@@ -1213,6 +1288,17 @@ void Drone::disableCustomMessageSubscriptions() {
         subscription_state_.qr_codes_active = false;
         this->qr_code_sub_.reset();
     }
+    
+    if (subscription_state_.line_detection_active) {
+        subscription_state_.line_detection_active = false;
+        this->line_centroid_sub_.reset();
+        this->line_direction_sub_.reset();
+    }
+    
+    if (subscription_state_.hose_detection_active) {
+        subscription_state_.hose_detection_active = false;
+        this->hose_detection_sub_.reset();
+    }
 }
 
 // Check subscription status
@@ -1261,6 +1347,8 @@ void Drone::printSubscriptionStats(){
 		this->log(std::string("  Hand location: ") + (subscription_state_.hand_location_active ? "ACTIVE" : "DISABLED"));
 		this->log(std::string("  Barcodes: ") + (subscription_state_.barcodes_active ? "ACTIVE" : "DISABLED"));
 		this->log(std::string("  QR codes: ") + (subscription_state_.qr_codes_active ? "ACTIVE" : "DISABLED"));
+		this->log(std::string("  Line detection: ") + (subscription_state_.line_detection_active ? "ACTIVE" : "DISABLED"));
+		this->log(std::string("  Hose detection: ") + (subscription_state_.hose_detection_active ? "ACTIVE" : "DISABLED"));
 		this->log("  Position timer: ALWAYS ACTIVE (20Hz FSM)");
 		this->log("============================================");
 
@@ -1282,6 +1370,8 @@ size_t Drone::getActiveSubscriptionCount() const {
     if (subscription_state_.hand_location_active) count++;
     if (subscription_state_.barcodes_active) count++;
     if (subscription_state_.qr_codes_active) count++;
+    if (subscription_state_.line_detection_active) count += 2; // centroid + direction
+    if (subscription_state_.hose_detection_active) count++;
     
     return count;
 }

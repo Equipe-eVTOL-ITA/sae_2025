@@ -6,7 +6,9 @@ This ROS 2 node detects a blue fabric line (25cm width) using the vertical camer
 and publishes line guidance information for the drone to follow the line.
 
 The detector uses HSV color segmentation to identify blue pixels, then calculates
-the line's centroid and orientation to guide the drone's movement.
+the line's centroid and orientation to guide the drone's movement. The region of
+interest is vertical (left-right), and angles are published relative to vertical
+lines with clockwise being positive, in radians, ranging from -π/2 to π/2.
 """
 
 import rclpy
@@ -43,8 +45,8 @@ class BlueLineDetector(Node):
         self.declare_parameter('blue_upper_v', 255)
         
         # Line following parameters
-        self.declare_parameter('roi_top', 0.2)     # ROI top as fraction of image height
-        self.declare_parameter('roi_bottom', 0.8)  # ROI bottom as fraction of image height
+        self.declare_parameter('roi_left', 0.2)     # ROI left as fraction of image width
+        self.declare_parameter('roi_right', 0.8)    # ROI right as fraction of image width
         self.declare_parameter('min_line_length', 20)  # Minimum pixels for valid line segment
         self.declare_parameter('max_line_gap', 50)     # Maximum gap to connect line segments
         
@@ -71,8 +73,8 @@ class BlueLineDetector(Node):
         ])
         
         # ROI parameters
-        self.roi_top = self.get_parameter('roi_top').get_parameter_value().double_value
-        self.roi_bottom = self.get_parameter('roi_bottom').get_parameter_value().double_value
+        self.roi_left = self.get_parameter('roi_left').get_parameter_value().double_value
+        self.roi_right = self.get_parameter('roi_right').get_parameter_value().double_value
         self.min_line_length = self.get_parameter('min_line_length').get_parameter_value().integer_value
         self.max_line_gap = self.get_parameter('max_line_gap').get_parameter_value().integer_value
 
@@ -135,13 +137,13 @@ class BlueLineDetector(Node):
         mask = cv2.inRange(hsv, self.blue_lower, self.blue_upper)
         
         # Apply ROI (focus on middle portion of image)
-        height = mask.shape[0]
-        roi_start = int(height * self.roi_top)
-        roi_end = int(height * self.roi_bottom)
+        height, width = mask.shape
+        roi_start = int(width * self.roi_left)
+        roi_end = int(width * self.roi_right)
         
         # Zero out areas outside ROI
-        mask[:roi_start, :] = 0
-        mask[roi_end:, :] = 0
+        mask[:, :roi_start] = 0
+        mask[:, roi_end:] = 0
         
         # Apply morphological operations to clean up the mask
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, 
@@ -150,9 +152,9 @@ class BlueLineDetector(Node):
         # Close to connect broken line segments
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=self.morph_iterations)
         
-        # Use a horizontal kernel to connect horizontal line segments better
-        horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (self.morph_kernel_size * 3, 3))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, horizontal_kernel, iterations=1)
+        # Use a vertical kernel to connect vertical line segments better
+        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, self.morph_kernel_size * 3))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, vertical_kernel, iterations=1)
         
         # Open to remove noise
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
@@ -173,7 +175,7 @@ class BlueLineDetector(Node):
             
         Returns:
             centroid: (x, y) normalized coordinates of line centroid
-            angle: Line direction angle in degrees (0 = horizontal right, 90 = vertical up)
+            angle: Line direction angle in radians relative to vertical (clockwise positive, range: -π/2 to π/2)
             confidence: Detection confidence [0, 1]
         """
         # Find contours
@@ -213,12 +215,20 @@ class BlueLineDetector(Node):
         # Fit line to get direction
         [vx, vy, x0, y0] = cv2.fitLine(all_points, cv2.DIST_L2, 0, 0.01, 0.01)
         
-        # Calculate angle (in degrees)
-        angle = math.degrees(math.atan2(vy, vx))
+        # Calculate angle relative to vertical in radians
+        # atan2(vx, vy) gives angle from vertical (clockwise positive)
+        # Range is limited to -π/2 to π/2 (-90° to 90°)
+        angle_radians = math.atan2(vx, vy)
+        
+        # Ensure angle is within -π/2 to π/2 range
+        if angle_radians > math.pi/2:
+            angle_radians -= math.pi
+        elif angle_radians < -math.pi/2:
+            angle_radians += math.pi
         
         # Calculate confidence based on line area relative to ROI
-        roi_height = int(height * (self.roi_bottom - self.roi_top))
-        roi_area = width * roi_height
+        roi_width = int(width * (self.roi_right - self.roi_left))
+        roi_area = height * roi_width
         line_area = np.sum(mask > 0)
         
         # Confidence based on how much of the ROI is covered by the line
@@ -229,7 +239,7 @@ class BlueLineDetector(Node):
         else:
             confidence = max(0.1, min(0.8, area_ratio * 2.0))  # Lower confidence for unusual ratios
         
-        return (norm_cx, norm_cy), angle, confidence
+        return (norm_cx, norm_cy), angle_radians, confidence
 
     def process_image_callback(self):
         """Process the latest image for line detection"""
@@ -258,9 +268,9 @@ class BlueLineDetector(Node):
         
         # Draw ROI rectangle
         height, width = current_frame.shape[:2]
-        roi_start = int(height * self.roi_top)
-        roi_end = int(height * self.roi_bottom)
-        cv2.rectangle(annotated_frame, (0, roi_start), (width, roi_end), (255, 255, 255), 2)
+        roi_start = int(width * self.roi_left)
+        roi_end = int(width * self.roi_right)
+        cv2.rectangle(annotated_frame, (roi_start, 0), (roi_end, height), (255, 255, 255), 2)
         
         # If line detected, draw visualization and publish data
         if centroid is not None and confidence >= self.confidence_threshold:
@@ -273,12 +283,15 @@ class BlueLineDetector(Node):
             
             # Draw direction line
             line_length = 100
-            end_x = int(pixel_cx + line_length * math.cos(math.radians(angle)))
-            end_y = int(pixel_cy + line_length * math.sin(math.radians(angle)))
+            # For vertical reference: angle=0 means vertical, positive clockwise
+            # Convert to standard math coordinates for drawing
+            end_x = int(pixel_cx + line_length * math.sin(angle))
+            end_y = int(pixel_cy + line_length * math.cos(angle))
             cv2.arrowedLine(annotated_frame, (pixel_cx, pixel_cy), (end_x, end_y), (0, 255, 255), 3)
             
             # Add text information
-            info_text = f'Line: conf={confidence:.2f}, angle={angle:.1f}°'
+            angle_degrees = math.degrees(angle)
+            info_text = f'Line: conf={confidence:.2f}, angle={angle_degrees:.1f}° ({angle:.3f}rad)'
             cv2.putText(annotated_frame, info_text, (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
@@ -297,9 +310,9 @@ class BlueLineDetector(Node):
             # Publish direction
             direction_msg = Vector3Stamped()
             direction_msg.header = self.latest_image_msg.header
-            direction_msg.vector.x = math.cos(math.radians(angle))  # Unit vector x
-            direction_msg.vector.y = math.sin(math.radians(angle))  # Unit vector y
-            direction_msg.vector.z = angle  # Angle in degrees for convenience
+            direction_msg.vector.x = math.sin(angle)   # Unit vector x (for vertical reference)
+            direction_msg.vector.y = math.cos(angle)   # Unit vector y (for vertical reference)
+            direction_msg.vector.z = angle             # Angle in radians
             self.line_direction_publisher.publish(direction_msg)
             
             # Log every 10th detection to avoid spam
@@ -309,7 +322,8 @@ class BlueLineDetector(Node):
                 self._detection_count = 1
                 
             if self._detection_count % 10 == 0:
-                self.get_logger().info(f"Line detected: pos=({centroid[0]:.2f}, {centroid[1]:.2f}), angle={angle:.1f}°, conf={confidence:.2f}")
+                angle_degrees = math.degrees(angle)
+                self.get_logger().info(f"Line detected: pos=({centroid[0]:.2f}, {centroid[1]:.2f}), angle={angle_degrees:.1f}° ({angle:.3f}rad), conf={confidence:.2f}")
         else:
             cv2.putText(annotated_frame, 'No line detected', (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
@@ -323,7 +337,7 @@ class BlueLineDetector(Node):
                    (10, height - 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
                    
-        cv2.putText(annotated_frame, f'ROI: {self.roi_top:.1f}-{self.roi_bottom:.1f}', 
+        cv2.putText(annotated_frame, f'ROI: {self.roi_left:.1f}-{self.roi_right:.1f}', 
                    (10, height - 10), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 

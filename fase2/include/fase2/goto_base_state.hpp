@@ -11,7 +11,7 @@ public:
 
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
-        drone->log("STATE: GoToBaseState");
+        drone->log("STATE: GO TO BASE");
 
         max_velocity = *blackboard.get<float>("max_horizontal_velocity");
         float takeoff_height = *blackboard.get<float>("takeoff_height");

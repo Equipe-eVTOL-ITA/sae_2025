@@ -13,6 +13,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <vision_msgs/msg/detection2_d_array.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <custom_msgs/msg/gesture.hpp>
 #include <custom_msgs/msg/hand_location.hpp>
 #include <custom_msgs/msg/bar_code.hpp>
@@ -215,6 +217,34 @@ public:
 	std::string readQRCode();
 	
 	/*
+		Line Following and Hose Detection Interface for Fase2
+	*/
+	
+	// Blue line detection data
+	struct LineDetectionData {
+		bool has_detection = false;
+		double centroid_x = 0.5;
+		double centroid_y = 0.5;
+		double direction_angle = 0.0;
+		double confidence = 0.0;
+		std::chrono::steady_clock::time_point last_update;
+	};
+	
+	// Hose detection data
+	struct HoseDetectionData {
+		bool has_detection = false;
+		double position_x = 0.5;
+		double position_y = 0.5;
+		double confidence = 0.0;
+		std::chrono::steady_clock::time_point last_update;
+	};
+	
+	LineDetectionData getLineDetection();
+	HoseDetectionData getHoseDetection();
+	bool isLineDetectionRecent(double timeout_seconds = 0.5);
+	bool isHoseDetectionRecent(double timeout_seconds = 1.0);
+	
+	/*
 		Subscription Management for Performance Optimization
 	*/
 	
@@ -309,6 +339,11 @@ private:
 
 	rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_code_sub_;
 
+	// Line and hose detection subscriptions for Fase2
+	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr line_centroid_sub_;
+	rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr line_direction_sub_;
+	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr hose_detection_sub_;
+
 	rclcpp::Publisher<custom_msgs::msg::Position>::SharedPtr position_pub_;
 	rclcpp::TimerBase::SharedPtr position_timer_;
 
@@ -379,6 +414,10 @@ private:
 
 	std::string qr_code_data_{""}; 
 
+	// Line following and hose detection data for Fase2
+	LineDetectionData line_detection_data_;
+	HoseDetectionData hose_detection_data_;
+
 	std::unordered_map<std::string, rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr> image_publishers_;
 	
 	// Subscription state tracking for optimization
@@ -386,13 +425,15 @@ private:
 		bool vertical_camera_active = false;
 		bool horizontal_camera_active = false; 
 		bool angled_camera_active = false;
-		bool vertical_cv_active = true;  // Keep CV active by default since used by FSM
+		bool vertical_cv_active = false;  // Keep CV active by default since used by FSM
 		bool angled_cv_active = false;    // Keep CV active by default since used by FSM
 		bool post_detections_active = true; // Keep post detections active for slalom
 		bool gestures_active = false;     // Keep custom messages active by default
 		bool hand_location_active = false;
 		bool barcodes_active = false;
 		bool qr_codes_active = false;
+		bool line_detection_active = false;  // For fase2 line following
+		bool hose_detection_active = false;  // For fase2 hose detection
 	} subscription_state_;
 	
 	// Performance tracking

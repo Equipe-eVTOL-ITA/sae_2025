@@ -33,13 +33,41 @@ ament_target_dependencies(fase2
   vision_msgs
 )
 
+add_executable(gancho
+  src/gancho.cpp
+)
+
+ament_target_dependencies(gancho
+  rclcpp
+  fsm
+  sae_drone_lib
+  Eigen3
+  vision_msgs
+)
+
+add_executable(takeoff_gancho
+  src/takeoff_gancho.cpp
+)
+
+ament_target_dependencies(takeoff_gancho
+  rclcpp
+  fsm
+  sae_drone_lib
+  Eigen3
+  vision_msgs
+)
+
 target_link_libraries(fase2 ${OpenCV_LIBS})
+target_link_libraries(takeoff_gancho ${OpenCV_LIBS})
+target_link_libraries(gancho ${OpenCV_LIBS})
 
 #Install
 
 install(
   TARGETS
     fase2
+    takeoff_gancho
+    gancho
   DESTINATION lib/${PROJECT_NAME}
 )
 

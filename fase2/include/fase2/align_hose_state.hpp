@@ -113,8 +113,6 @@ public:
             
             if (stable_elapsed.count() > payload_drop_delay * 1000) {
                 drone->log("Hose alignment achieved! Dropping payload.");
-                // Drop the gancho
-                drone->dropGancho();
                 return "ALIGNED";
             }
         } else {

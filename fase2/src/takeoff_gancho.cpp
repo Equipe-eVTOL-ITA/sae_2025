@@ -59,63 +59,18 @@ public:
 
         // STATES
         this->add_state("INITIAL_TAKEOFF", std::make_unique<InitialTakeoffState>());
-        this->add_state("ROTATE", std::make_unique<RotateState>());
-        this->add_state("GO_TO", std::make_unique<GoToState>());
-        this->add_state("SEARCH_HOSE", std::make_unique<SearchHoseState>());
-        this->add_state("DESESPERO", std::make_unique<DesesperoState>());
-        this->add_state("ALIGN_HOSE", std::make_unique<AlignHoseState>());
-        this->add_state("RETURN_HOME", std::make_unique<ReturnHomeState>());
-        this->add_state("ALIGN_HOME", std::make_unique<AlignHomeState>());
         this->add_state("LANDING", std::make_unique<LandingState>());
         this->add_state("DROP_GANCHO", std::make_unique<DropGanchoState>());
 
         // TRANSITIONS
         
         this->add_transitions("INITIAL_TAKEOFF", {
-            {"TAKEOFF_COMPLETED", "ROTATE"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("ROTATE", {
-            {"ROTATED", "GO_TO"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("GO_TO", {
-            {"ARRIVED", "SEARCH_HOSE"}  ,
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("SEARCH_HOSE", {
-            {"HOSE_DETECTED", "ALIGN_HOSE"},
-            {"HOSE_NOT_FOUND", "DESESPERO"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("DESESPERO", {
-            {"AT ESTIMATE", "DROP_GANCHO"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("ALIGN_HOSE", {
-            {"ALIGNED", "DROP_GANCHO"},
-            {"TIMEOUT", "DROP_GANCHO"},
-            {"LOST DETECTIONS", "DESESPERO"},
+            {"TAKEOFF_COMPLETED", "DROP_GANCHO"},
             {"SEG FAULT", "ERROR"}
         });
 
         this->add_transitions("DROP_GANCHO", {
-            {"GANCHO_DROPPED", "RETURN_HOME"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("RETURN_HOME", {
-            {"ARRIVED_HOME", "ALIGN_HOME"},
-            {"SEG FAULT", "ERROR"}
-        });
-
-        this->add_transitions("ALIGN_HOME", {
-            {"LAND NOW", "LANDING"},
+            {"GANCHO_DROPPED", "LANDING"},
             {"SEG FAULT", "ERROR"}
         });
 

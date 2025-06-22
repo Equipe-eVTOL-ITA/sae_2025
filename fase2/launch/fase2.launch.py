@@ -18,7 +18,7 @@ def generate_launch_description():
 
     blue_detector_node = Node(
         package='sae_cv_utils',
-        executable='blueline_detector',
+        executable='blue_detector',
         parameters=[params],
         output='screen'
     )

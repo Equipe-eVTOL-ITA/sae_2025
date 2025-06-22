@@ -17,6 +17,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CompressedImage, Image
 from geometry_msgs.msg import PointStamped
+from std_msgs.msg import Float64
 from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, ObjectHypothesisWithPose
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
@@ -123,6 +124,7 @@ class MangueiraDetector(Node):
         # Publishers
         self.hose_position_publisher = self.create_publisher(PointStamped, '/mangueira/position', 10)
         self.detection_publisher = self.create_publisher(Detection2DArray, '/mangueira/detections', 10)
+        self.hose_angle_publisher = self.create_publisher(Float64, '/mangueira/angle', 10)  # NEW: Publish hose angle
         self.image_publisher = self.create_publisher(Image, f'/mangueira_detector/{base_topic}/image', 10)
 
         # Set up timer for processing images
@@ -203,14 +205,14 @@ class MangueiraDetector(Node):
 
     def analyze_hose_contours(self, mask: np.ndarray, image_shape: Tuple[int, int]) -> List[Dict]:
         """
-        Analyze contours to find hose-like objects with specialized algorithms for very thin objects
+        Analyze contours to find hose-like objects with angle detection
         
         Args:
             mask: Binary mask of potential hose pixels
             image_shape: (height, width) of the original image
             
         Returns:
-            List of hose detection dictionaries
+            List of hose detection dictionaries with angle information
         """
         # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -243,6 +245,54 @@ class MangueiraDetector(Node):
             if length < self.min_hose_length or width_px > self.max_hose_width:
                 continue
             
+            # Calculate hose angle using contour fitting
+            hose_angle = 0.0  # Default angle
+            
+            # Method 1: Try to fit ellipse for orientation
+            if len(contour) >= 5:
+                try:
+                    ellipse = cv2.fitEllipse(contour)
+                    # Get ellipse angle in degrees, convert to radians
+                    ellipse_angle_deg = ellipse[2]
+                    
+                    # Convert to our coordinate system: 
+                    # - 0° = vertical (pointing up in image = drone front)
+                    # - positive angles = clockwise rotation from drone front
+                    # - range: -π/2 to π/2
+                    
+                    # OpenCV ellipse angle is in degrees (0-180), where 0° is horizontal
+                    # Convert to our system: subtract 90° to make 0° vertical (drone front)
+                    adjusted_angle_deg = -ellipse_angle_deg
+                    
+                    # Convert to radians
+                    hose_angle = math.radians(adjusted_angle_deg)
+                    
+                    # Normalize to [-π/2, π/2] to avoid 180° flips
+                    # This ensures consistent angle relative to drone front
+                    while hose_angle > math.pi/2:
+                        hose_angle -= math.pi
+                    while hose_angle < -math.pi/2:
+                        hose_angle += math.pi
+                        
+                except:
+                    # Method 2: Use line fitting as fallback
+                    if len(contour) >= 10:
+                        try:
+                            # Reshape contour for cv2.fitLine
+                            points = contour.reshape(-1, 2)
+                            [vx, vy, x0, y0] = cv2.fitLine(points, cv2.DIST_L2, 0, 0.01, 0.01)
+                            
+                            # Calculate angle from vertical (drone front direction)
+                            hose_angle = math.atan2(vx, vy)
+                            
+                            # Normalize to [-π/2, π/2] to avoid 180° flips
+                            while hose_angle > math.pi/2:
+                                hose_angle -= math.pi
+                            while hose_angle < -math.pi/2:
+                                hose_angle += math.pi
+                        except:
+                            hose_angle = 0.0
+            
             # Calculate additional metrics for thin object validation
             
             # 1. Solidity (how solid/filled the contour is)
@@ -257,20 +307,6 @@ class MangueiraDetector(Node):
             # 3. Perimeter-based metrics for thin objects
             perimeter = cv2.arcLength(contour, True)
             compactness = (perimeter * perimeter) / (4 * np.pi * area) if area > 0 else float('inf')
-            
-            # 4. Fit ellipse for orientation analysis (if enough points)
-            orientation = 0
-            ellipse_ratio = 1
-            ellipse_area = 0
-            if len(contour) >= 5:
-                try:
-                    ellipse = cv2.fitEllipse(contour)
-                    orientation = ellipse[2]  # Angle in degrees
-                    # Ellipse axis ratio
-                    ellipse_ratio = max(ellipse[1]) / max(min(ellipse[1]), 1)
-                    ellipse_area = np.pi * ellipse[1][0] * ellipse[1][1] / 4
-                except:
-                    pass
             
             # Calculate centroid
             M = cv2.moments(contour)
@@ -342,8 +378,7 @@ class MangueiraDetector(Node):
                 'solidity': solidity,
                 'extent': extent,
                 'compactness': compactness,
-                'orientation': orientation,
-                'ellipse_ratio': ellipse_ratio,
+                'angle': hose_angle,  # Hose angle in radians (-π/2 to π/2)
                 'length_px': length,
                 'width_px': width_px,
                 'red_pixel_ratio': red_pixel_ratio,
@@ -456,7 +491,7 @@ class MangueiraDetector(Node):
         # Publish detections
         self.detection_publisher.publish(detection_array)
         
-        # Publish best hose position
+        # Publish best hose position and angle
         if best_hose_position is not None:
             position_msg = PointStamped()
             position_msg.header = self.latest_image_msg.header
@@ -465,6 +500,12 @@ class MangueiraDetector(Node):
             position_msg.point.z = best_hose_position[2]  # Confidence
             self.hose_position_publisher.publish(position_msg)
             
+            # Publish hose angle for the best detection
+            if valid_detections:
+                angle_msg = Float64()
+                angle_msg.data = valid_detections[0]['angle']  # Angle in radians (-π/2 to π/2)
+                self.hose_angle_publisher.publish(angle_msg)
+            
             # Log every 10th detection to avoid spam
             if hasattr(self, '_detection_count'):
                 self._detection_count += 1
@@ -472,7 +513,8 @@ class MangueiraDetector(Node):
                 self._detection_count = 1
                 
             if self._detection_count % 10 == 0:
-                self.get_logger().info(f"Hose detected: pos=({best_hose_position[0]:.2f}, {best_hose_position[1]:.2f}), conf={best_hose_position[2]:.2f}")
+                angle_deg = math.degrees(valid_detections[0]['angle']) if valid_detections else 0.0
+                self.get_logger().info(f"Hose detected: pos=({best_hose_position[0]:.2f}, {best_hose_position[1]:.2f}), conf={best_hose_position[2]:.2f}, angle={angle_deg:.1f}°")
         else:
             cv2.putText(annotated_frame, 'No hose detected', (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)

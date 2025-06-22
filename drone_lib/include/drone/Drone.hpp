@@ -21,6 +21,7 @@
 #include <custom_msgs/msg/multi_bar_code.hpp>
 #include <custom_msgs/msg/position.hpp>
 #include "std_msgs/msg/string.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 #include <px4_msgs/msg/vehicle_status.hpp>
 #include <px4_msgs/msg/vtol_vehicle_status.hpp>
@@ -113,6 +114,7 @@ struct BoundingBox
 	double center_y;
 	double size_x;
 	double size_y;
+	double confidence = 0.0;
 	std::string class_id = "-1";
 };
 } // namespace DronePX4
@@ -176,6 +178,8 @@ public:
 	void setGroundSpeed(float speed);
 
 	void setAirSpeed(float speed);
+
+	void dropGancho();
 
 	void setOffboardControlMode(DronePX4::CONTROLLER_TYPE type);
 	
@@ -243,6 +247,20 @@ public:
 	HoseDetectionData getHoseDetection();
 	bool isLineDetectionRecent(double timeout_seconds = 0.5);
 	bool isHoseDetectionRecent(double timeout_seconds = 1.0);
+	
+	/*
+		SAE 2025 Phase 2 Enhanced Interface
+	*/
+	
+	// Mangueira (hose) detection data from vision_msgs::Detection2DArray
+	std::vector<DronePX4::BoundingBox> getMangueiraDetections();
+	
+	// Mangueira angle from /mangueira/angle topic (Float64)  
+	double getMangueiraAngle();
+	bool isMangueiraAngleRecent(double timeout_seconds = 1.0);
+	
+	// Blue base detection data from vision_msgs::Detection2DArray
+	std::vector<DronePX4::BoundingBox> getBlueDetections();
 	
 	/*
 		Subscription Management for Performance Optimization
@@ -343,6 +361,11 @@ private:
 	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr line_centroid_sub_;
 	rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr line_direction_sub_;
 	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr hose_detection_sub_;
+	
+	// SAE 2025 Phase 2 enhanced subscriptions
+	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr mangueira_detections_sub_;
+	rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr mangueira_angle_sub_;
+	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr blue_detections_sub_;
 
 	rclcpp::Publisher<custom_msgs::msg::Position>::SharedPtr position_pub_;
 	rclcpp::TimerBase::SharedPtr position_timer_;
@@ -417,6 +440,14 @@ private:
 	// Line following and hose detection data for Fase2
 	LineDetectionData line_detection_data_;
 	HoseDetectionData hose_detection_data_;
+	
+	// SAE 2025 Phase 2 enhanced detection data
+	std::vector<DronePX4::BoundingBox> mangueira_detections_;
+	std::vector<DronePX4::BoundingBox> blue_detections_;
+	double mangueira_angle_ = 0.0;
+	std::chrono::steady_clock::time_point mangueira_angle_last_update_;
+	std::chrono::steady_clock::time_point mangueira_detections_last_update_;
+	std::chrono::steady_clock::time_point blue_detections_last_update_;
 
 	std::unordered_map<std::string, rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr> image_publishers_;
 	
@@ -434,6 +465,9 @@ private:
 		bool qr_codes_active = false;
 		bool line_detection_active = false;  // For fase2 line following
 		bool hose_detection_active = false;  // For fase2 hose detection
+		bool mangueira_detections_active = true;  // For SAE 2025 Phase 2 hose detections
+		bool mangueira_angle_active = true;       // For SAE 2025 Phase 2 hose angle
+		bool blue_detections_active = true;       // For SAE 2025 Phase 2 blue base detections
 	} subscription_state_;
 	
 	// Performance tracking

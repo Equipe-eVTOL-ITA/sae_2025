@@ -322,7 +322,8 @@ Drone::Drone() {
 					bbox_size_x_ = detection.bbox.size_x;
 					bbox_size_y_ = detection.bbox.size_y;
 					bbox_class_id_ = detection.results[0].hypothesis.class_id;
-					vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, bbox_class_id_});
+					double confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+					vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, confidence, bbox_class_id_});
 				}
 			}
 		);
@@ -340,7 +341,9 @@ Drone::Drone() {
 					bbox_center_y_ = detection.bbox.center.position.y;
 					bbox_size_x_ = detection.bbox.size_x;
 					bbox_size_y_ = detection.bbox.size_y;
-					angled_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
+					double confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+					std::string class_id = detection.results.empty() ? "-1" : detection.results[0].hypothesis.class_id;
+					angled_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, confidence, class_id});
 				}
 			}
 		);
@@ -360,7 +363,8 @@ Drone::Drone() {
 					bbox_size_x_ = detection.bbox.size_x;
 					bbox_size_y_ = detection.bbox.size_y;
 					bbox_class_id_ = detection.results[0].hypothesis.class_id;
-					post_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, bbox_class_id_});
+					double confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+					post_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, confidence, bbox_class_id_});
 				}
 			}
 		);
@@ -460,6 +464,63 @@ Drone::Drone() {
 				this->hose_detection_data_.position_y = msg->point.y;
 				this->hose_detection_data_.confidence = msg->point.z;  // Confidence in z field
 				this->hose_detection_data_.last_update = std::chrono::steady_clock::now();
+			}
+		);
+	}
+	
+	// SAE 2025 Phase 2 enhanced subscriptions
+	if (subscription_state_.mangueira_detections_active) {
+		this->mangueira_detections_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
+			"/mangueira/detections",
+			cv_qos,
+			[this](vision_msgs::msg::Detection2DArray::SharedPtr msg) {
+				this->total_message_count_++;
+				this->mangueira_detections_.clear();
+				for (const auto& detection : msg->detections) {
+					DronePX4::BoundingBox bbox;
+					bbox.center_x = detection.bbox.center.position.x;
+					bbox.center_y = detection.bbox.center.position.y;
+					bbox.size_x = detection.bbox.size_x;
+					bbox.size_y = detection.bbox.size_y;
+					bbox.confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+					bbox.class_id = detection.id;
+					this->mangueira_detections_.push_back(bbox);
+				}
+				this->mangueira_detections_last_update_ = std::chrono::steady_clock::now();
+			}
+		);
+	}
+	
+	if (subscription_state_.mangueira_angle_active) {
+		this->mangueira_angle_sub_ = this->px4_node_->create_subscription<std_msgs::msg::Float64>(
+			"/mangueira/angle",
+			custom_qos,
+			[this](std_msgs::msg::Float64::SharedPtr msg) {
+				this->total_message_count_++;
+				this->mangueira_angle_ = msg->data;
+				this->mangueira_angle_last_update_ = std::chrono::steady_clock::now();
+			}
+		);
+	}
+	
+	if (subscription_state_.blue_detections_active) {
+		this->blue_detections_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
+			"/blue_base/detections",
+			cv_qos,
+			[this](vision_msgs::msg::Detection2DArray::SharedPtr msg) {
+				this->total_message_count_++;
+				this->blue_detections_.clear();
+				for (const auto& detection : msg->detections) {
+					DronePX4::BoundingBox bbox;
+					bbox.center_x = detection.bbox.center.position.x;
+					bbox.center_y = detection.bbox.center.position.y;
+					bbox.size_x = detection.bbox.size_x;
+					bbox.size_y = detection.bbox.size_y;
+					bbox.confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+					bbox.class_id = detection.id;
+					this->blue_detections_.push_back(bbox);
+				}
+				this->blue_detections_last_update_ = std::chrono::steady_clock::now();
 			}
 		);
 	}
@@ -746,6 +807,27 @@ void Drone::setAirSpeed(float speed) {
   	this->setSpeed(speed, false);
 }
 
+void Drone::dropGancho() {
+	// Send MAV_CMD_DO_DIGICAM_CONTROL command to trigger payload release
+	// This is a common way to trigger auxiliary actions in PX4
+	this->sendCommand(
+		px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_DIGICAM_CONTROL,
+		this->target_system_,
+		this->target_component_,
+		this->source_system_,
+		this->source_component_,
+		this->confirmation_,
+		this->from_external_,
+		1.0f,  // Session control - trigger
+		0.0f,  // Zoom position
+		0.0f,  // Zoom step
+		0.0f,  // Focus lock
+		0.0f,  // Shooting command
+		0.0f,  // Command identity
+		0.0f   // Extra parameter
+	);
+}
+
 void Drone::setOffboardControlMode(DronePX4::CONTROLLER_TYPE type) {
 	px4_msgs::msg::OffboardControlMode msg;
 	msg.timestamp = this->px4_node_->get_clock()->now().nanoseconds() / 1000;
@@ -996,6 +1078,27 @@ bool Drone::isHoseDetectionRecent(double timeout_seconds) {
 	return time_since_detection < (timeout_seconds * 1000.0);
 }
 
+// SAE 2025 Phase 2 enhanced interface methods
+std::vector<DronePX4::BoundingBox> Drone::getMangueiraDetections() {
+	return mangueira_detections_;
+}
+
+double Drone::getMangueiraAngle() {
+	return mangueira_angle_;
+}
+
+bool Drone::isMangueiraAngleRecent(double timeout_seconds) {
+	auto current_time = std::chrono::steady_clock::now();
+	auto time_since_update = std::chrono::duration_cast<std::chrono::milliseconds>(
+		current_time - mangueira_angle_last_update_).count();
+	
+	return time_since_update < (timeout_seconds * 1000.0);
+}
+
+std::vector<DronePX4::BoundingBox> Drone::getBlueDetections() {
+	return blue_detections_;
+}
+
 //Coordinate System transformations (private functions)
 
 Eigen::Vector3d Drone::convertPositionNEDtoFRD(const Eigen::Vector3d& position_ned) const
@@ -1168,7 +1271,8 @@ void Drone::enableComputerVisionSubscriptions(bool vertical, bool angled) {
                     bbox_size_x_ = detection.bbox.size_x;
                     bbox_size_y_ = detection.bbox.size_y;
                     bbox_class_id_ = detection.results[0].hypothesis.class_id;
-                    vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, bbox_class_id_});
+                    double confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+                    vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, confidence, bbox_class_id_});
                 }
             }
         );
@@ -1187,7 +1291,9 @@ void Drone::enableComputerVisionSubscriptions(bool vertical, bool angled) {
                     bbox_center_y_ = detection.bbox.center.position.y;
                     bbox_size_x_ = detection.bbox.size_x;
                     bbox_size_y_ = detection.bbox.size_y;
-                    angled_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
+                    double confidence = detection.results.empty() ? 0.0 : detection.results[0].hypothesis.score;
+                    std::string class_id = detection.results.empty() ? "-1" : detection.results[0].hypothesis.class_id;
+                    angled_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_, confidence, class_id});
                 }
             }
         );
@@ -1298,6 +1404,21 @@ void Drone::disableCustomMessageSubscriptions() {
     if (subscription_state_.hose_detection_active) {
         subscription_state_.hose_detection_active = false;
         this->hose_detection_sub_.reset();
+    }
+    
+    if (subscription_state_.mangueira_detections_active) {
+        subscription_state_.mangueira_detections_active = false;
+        this->mangueira_detections_sub_.reset();
+    }
+    
+    if (subscription_state_.mangueira_angle_active) {
+        subscription_state_.mangueira_angle_active = false;
+        this->mangueira_angle_sub_.reset();
+    }
+    
+    if (subscription_state_.blue_detections_active) {
+        subscription_state_.blue_detections_active = false;
+        this->blue_detections_sub_.reset();
     }
 }
 

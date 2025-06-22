@@ -16,8 +16,9 @@ public:
         const Eigen::Vector3d fictual_home = Eigen::Vector3d({0.0, 0.0, 0.0});
         print_counter = 0;
         
-        float takeoff_height = *blackboard.get<float>("takeoff_height");
-        max_velocity = *blackboard.get<float>("max_vertical_velocity");
+        double takeoff_height = *blackboard.get<double>("takeoff_height");
+        max_velocity = *blackboard.get<double>("max_vertical_velocity");
+        dist_tolerance = *blackboard.get<double>("dist_tolerance");
         
         drone->toOffboardSync();
         drone->armSync();
@@ -44,11 +45,11 @@ public:
         }
         print_counter++;
 
-        if ((pos-goal).norm() < 0.15){
-            return "INITIAL TAKEOFF COMPLETED";
+        Eigen::Vector3d diff = goal - pos;
+        if (diff.norm() < dist_tolerance){
+            return "TAKEOFF_COMPLETED";
         }
 
-        Eigen::Vector3d diff = goal - pos;
         Eigen::Vector3d little_goal = pos + (diff.norm() > max_velocity ? diff.normalized() * max_velocity : diff);
         
         drone->setLocalPosition(little_goal[0], little_goal[1], little_goal[2], initial_yaw);
@@ -57,9 +58,10 @@ public:
     }
 
 private:
-    float max_velocity;
+    double max_velocity;
     Eigen::Vector3d pos, goal, goal_diff, little_goal;
     Drone* drone;
     int print_counter;
-    float initial_yaw;
+    double initial_yaw;
+    double dist_tolerance;
 };

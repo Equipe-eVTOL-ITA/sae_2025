@@ -14,10 +14,11 @@ public:
         if (drone == nullptr) return;
         drone->log("STATE: GO TO");
 
-        max_velocity = *blackboard.get<float>("max_horizontal_velocity");
-        float takeoff_height = *blackboard.get<float>("takeoff_height");
+        max_velocity = *blackboard.get<double>("max_horizontal_velocity");
+        double takeoff_height = *blackboard.get<double>("takeoff_height");
 
-        float estimated_distance = *blackboard.get<float>("estimated_distance");
+        double estimated_distance = *blackboard.get<double>("estimated_distance");
+        dist_tolerance = *blackboard.get<double>("dist_tolerance");
 
         goal = Eigen::Vector3d(estimated_distance, 0.0, takeoff_height);
 
@@ -30,7 +31,7 @@ public:
 
         Eigen::Vector3d diff = goal - pos;
 
-        if (diff.norm() < 0.08) {
+        if (diff.norm() < dist_tolerance) {
             return "ARRIVED";
         }
         
@@ -49,6 +50,7 @@ private:
     Eigen::Vector3d pos;
     Drone* drone;
     Eigen::Vector3d goal;
-    float max_velocity;
-    float yaw;
+    double max_velocity;
+    double yaw;
+    double dist_tolerance;
 };

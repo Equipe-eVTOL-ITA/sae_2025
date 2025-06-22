@@ -17,7 +17,7 @@ setup(
         'console_scripts': [
             'landing_base_detector = landing_base_detector.landing_base_detector:main',
             'post_detector = slalom.post_detector:main',
-            'blueline_detector = hook.blueline:main',
+            'blue_detector = hook.blue:main',
             'mangueira_detector = hook.mangueira:main',
             'hsv_calibration = hsv_calibration.hsv_calibration:main'
         ],

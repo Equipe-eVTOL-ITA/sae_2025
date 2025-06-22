@@ -2,35 +2,38 @@
 #include <opencv2/highgui.hpp>
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
+#include <cmath>
 
-class GoToBaseState : public fsm::State {
+class GoToState : public fsm::State {
 public:
-    GoToBaseState() : fsm::State() {}
+    GoToState() : fsm::State() {}
 
     void on_enter(fsm::Blackboard &blackboard) override {
 
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
-        drone->log("STATE: GO TO BASE");
+        drone->log("STATE: GO TO");
 
         max_velocity = *blackboard.get<float>("max_horizontal_velocity");
         float takeoff_height = *blackboard.get<float>("takeoff_height");
-        
-        const Eigen::Vector2d approx_base = *blackboard.get<Eigen::Vector2d>("approximate_base");
-        goal = Eigen::Vector3d(approx_base.x(), approx_base.y(), takeoff_height);
 
-        yaw = drone->getOrientation()[2];
+        float estimated_distance = *blackboard.get<float>("estimated_distance");
+
+        goal = Eigen::Vector3d(estimated_distance, 0.0, takeoff_height);
+
+        yaw = -M_PI / 2;
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
         (void)blackboard;
         pos = drone->getLocalPosition();
 
-        if ((pos-goal).norm() < 0.08) {
-            return "ARRIVED AT BASE";
+        Eigen::Vector3d diff = goal - pos;
+
+        if (diff.norm() < 0.08) {
+            return "ARRIVED";
         }
         
-        Eigen::Vector3d diff = goal - pos;
         Eigen::Vector3d little_goal = pos + (diff.norm() > max_velocity ? diff.normalized() * max_velocity : diff);
 
         drone->setLocalPosition(little_goal[0], little_goal[1], little_goal[2], yaw);

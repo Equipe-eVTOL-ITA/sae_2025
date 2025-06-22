@@ -3,15 +3,16 @@
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
 
-class AlignHoseState : public fsm::State {
+class DesesperoState : public fsm::State {
 public:
-    AlignHoseState() : fsm::State() {}
+    DesesperoState() : fsm::State() {}
 
     void on_enter(fsm::Blackboard &blackboard) override {
 
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
-        drone->log("STATE: ALIGN HOSE");
+        drone->log("STATE: DESESPERO");
+
 
     }
 
@@ -22,10 +23,6 @@ public:
 
     void on_exit(fsm::Blackboard &blackboard) override {
         (void)blackboard;
-
-        // DROP GANCHO
-        // drone->dropGancho();
-        // drone->log("GANCHO DROPPED.");
     }
 
 private:

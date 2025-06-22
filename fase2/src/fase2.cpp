@@ -1,5 +1,8 @@
 #include "fase2/initial_takeoff_state.hpp"
-#include "fase2/go_to_hose_state.hpp"
+#include "fase2/rotate_state.hpp"
+#include "fase2/goto_state.hpp"
+#include "fase2/search_hose_state.hpp"
+#include "fase2/desespero_state.hpp"
 #include "fase2/align_hose_state.hpp"
 #include "fase2/return_home_state.hpp"
 #include "fase2/align_home_state.hpp"
@@ -131,48 +134,64 @@ public:
 
         // STATES
         this->add_state("INITIAL_TAKEOFF", std::make_unique<InitialTakeoffState>());
-        this->add_state("GO_TO_HOSE", std::make_unique<GoToHoseState>());
+        this->add_state("ROTATE", std::make_unique<RotateState>());
+        this->add_state("GO_TO", std::make_unique<GoToState>());
+        this->add_state("SEARCH_HOSE", std::make_unique<SearchHoseState>());
+        this->add_state("DESESPERO", std::make_unique<DesesperoState>());
         this->add_state("ALIGN_HOSE", std::make_unique<AlignHoseState>());
         this->add_state("RETURN_HOME", std::make_unique<ReturnHomeState>());
         this->add_state("ALIGN_HOME", std::make_unique<AlignHomeState>());
-        this->add_state("FINAL_LANDING", std::make_unique<LandingState>());
+        this->add_state("LANDING", std::make_unique<LandingState>());
 
         // TRANSITIONS
         
-        // Initial Takeoff transitions
         this->add_transitions("INITIAL_TAKEOFF", {
-            {"TAKEOFF_COMPLETED", "GO_TO_HOSE"},
-            {"TIMEOUT", "ERROR"}
+            {"TAKEOFF_COMPLETED", "ROTATE"},
+            {"SEG FAULT", "ERROR"}
         });
 
-        // Go To Hose (line following) transitions
-        this->add_transitions("GO_TO_HOSE", {
+        this->add_transitions("ROTATE", {
+            {"ROTATED", "GO_TO"},
+            {"SEG FAULT", "ERROR"}
+        });
+
+        this->add_transitions("GO_TO", {
+            {"ARRIVED", "SEARCH_HOSE"},
+            {"SEG FAULT", "ERROR"}
+        });
+
+        this->add_transitions("SEARCH_HOSE", {
             {"HOSE_DETECTED", "ALIGN_HOSE"},
-            {"TIMEOUT", "RETURN_HOME"}  // Fallback if hose not found
+            {"HOSE_NOT_FOUND", "DESESPERO"},
+            {"SEG FAULT", "ERROR"}
         });
 
-        // Align Hose transitions
+        this->add_transitions("DESESPERO", {
+            {"DROPPED GANCHO", "RETURN_HOME"},
+            {"SEG FAULT", "ERROR"}
+        });
+
         this->add_transitions("ALIGN_HOSE", {
             {"ALIGNED", "RETURN_HOME"},
-            {"TIMEOUT", "RETURN_HOME"}  // Fallback if alignment fails
+            {"TIMEOUT", "RETURN_HOME"},
+            {"LOST DETECTIONS", "DESESPERO"},
+            {"SEG FAULT", "ERROR"}
         });
 
-        // Return Home transitions
         this->add_transitions("RETURN_HOME", {
             {"ARRIVED_HOME", "ALIGN_HOME"},
-            {"TIMEOUT", "FINAL_LANDING"}  // Emergency landing if return fails
+            {"SEG FAULT", "ERROR"}
         });
 
-        // Align Home transitions
         this->add_transitions("ALIGN_HOME", {
-            {"ALIGNED_HOME", "FINAL_LANDING"},
-            {"TIMEOUT", "FINAL_LANDING"}  // Proceed to landing anyway
+            {"LAND NOW", "LANDING"},
+            {"SEG FAULT", "ERROR"}
         });
 
         // Final Landing transitions
-        this->add_transitions("FINAL_LANDING", {
+        this->add_transitions("LANDING", {
             {"LANDED", "FINISHED"},
-            {"TIMEOUT", "FINISHED"}  // Mission ends regardless
+            {"SEG FAULT", "ERROR"}
         });
     }
 };

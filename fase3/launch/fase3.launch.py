@@ -18,7 +18,7 @@ def generate_launch_description():
 
     detector_node = Node(
         package='sae_cv_utils',
-        executable='landing_base_detector',
+        executable='fase3_color_detector',
         parameters=[params]
     )
 
@@ -35,20 +35,11 @@ def generate_launch_description():
         output='screen'
     )
 
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        output='screen',
-        arguments=['-d', rviz_cfg]
-    )
-
     delayed_fase3_node = TimerAction(period=5.0, actions=[fase3_node])
 
     return LaunchDescription([
         exec_arg,
         detector_node,
         bridge_node,
-        rviz_node,
         delayed_fase3_node
     ])

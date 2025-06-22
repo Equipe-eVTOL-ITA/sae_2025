@@ -456,18 +456,18 @@ private:
 		bool vertical_camera_active = false;
 		bool horizontal_camera_active = false; 
 		bool angled_camera_active = false;
-		bool vertical_cv_active = false;  // Keep CV active by default since used by FSM
+		bool vertical_cv_active = true;  // Keep CV active by default since used by FSM
 		bool angled_cv_active = false;    // Keep CV active by default since used by FSM
-		bool post_detections_active = true; // Keep post detections active for slalom
+		bool post_detections_active = false; // Keep post detections active for slalom
 		bool gestures_active = false;     // Keep custom messages active by default
 		bool hand_location_active = false;
 		bool barcodes_active = false;
 		bool qr_codes_active = false;
 		bool line_detection_active = false;  // For fase2 line following
 		bool hose_detection_active = false;  // For fase2 hose detection
-		bool mangueira_detections_active = true;  // For SAE 2025 Phase 2 hose detections
-		bool mangueira_angle_active = true;       // For SAE 2025 Phase 2 hose angle
-		bool blue_detections_active = true;       // For SAE 2025 Phase 2 blue base detections
+		bool mangueira_detections_active = false;  // For SAE 2025 Phase 2 hose detections
+		bool mangueira_angle_active = false;       // For SAE 2025 Phase 2 hose angle
+		bool blue_detections_active = false;       // For SAE 2025 Phase 2 blue base detections
 	} subscription_state_;
 	
 	// Performance tracking

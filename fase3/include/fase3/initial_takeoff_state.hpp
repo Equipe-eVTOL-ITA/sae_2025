@@ -36,7 +36,7 @@ public:
     std::string act(fsm::Blackboard &blackboard) override {
         (void)blackboard;
         
-        pos  = drone->getLocalPosition();
+        pos = drone->getLocalPosition();
 
         if (print_counter%10==0){
             drone->log("Pos: {" + std::to_string(pos[0]) + ", " 

@@ -10,7 +10,7 @@ public:
     void on_enter(fsm::Blackboard &blackboard) override {
         drone = blackboard.get<Drone>("drone");
         if (drone == nullptr) return;
-        drone->log("STATE: LANDING");
+        drone->log("STATE: Pousando...");
 
         pos = drone->getLocalPosition();
 

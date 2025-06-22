@@ -19,7 +19,8 @@ setup(
             'post_detector = slalom.post_detector:main',
             'blue_detector = hook.blue:main',
             'mangueira_detector = hook.mangueira:main',
-            'hsv_calibration = hsv_calibration.hsv_calibration:main'
+            'hsv_calibration = hsv_calibration.hsv_calibration:main',
+            'fase3_color_detector = fase3.fase3_color_detector:main'
         ],
     }
 )

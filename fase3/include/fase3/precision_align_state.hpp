@@ -11,16 +11,21 @@
 
 class PrecisionAlignState : public fsm::State {
 public:
-    PrecisionAlignState() : fsm::State(), drone(nullptr),
-                            x_pid(0.9, 0.0, 0.05, 0.5),
-                            y_pid(0.9, 0.0, 0.05, 0.5) {}
+    PrecisionAlignState() : fsm::State(), drone(nullptr), x_pid(0,0,0,0), y_pid(0,0,0,0) {}
 
-    void on_enter(fsm::Blackboard &blackboard) override {
-        drone = blackboard.get<Drone>("drone");
-        if (!drone)
-            return;
+    void on_enter(fsm::Blackboard &blackboard){
+        this->drone = blackboard.get<Drone>("drone");
+        if(!this->drone) return;
+        this->drone->log("STATE: Alinhando com a base no chao...");
 
-        drone->log("STATE: PrecisionAlignState");
+        this->position_tolerance = *blackboard.get<float>("position_tolerance");
+        this->kp = *blackboard.get<float>("pid_pos_kp");
+        this->ki = *blackboard.get<float>("pid_pos_ki");
+        this->kd = *blackboard.get<float>("pid_pos_kd");
+        this->setpoint = *blackboard.get<float>("setpoint");
+
+        this->x_pid = PidController(this->kp, this->ki, this->kd, this->setpoint);
+        this->y_pid = PidController(this->kp, this->ki, this->kd, this->setpoint);
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
@@ -40,8 +45,8 @@ public:
             x_rate = x_pid.compute(-vertical_bbox.center_y);
             y_rate = y_pid.compute(vertical_bbox.center_x);
         }
-        if (vertical_distance < 0.03){
-            return "ALIGNED";
+        if (vertical_distance < this->position_tolerance){
+            return "OVER THE BASE";
         }
 
         float frd_x_rate = x_rate * cos(yaw) - y_rate * sin(yaw);
@@ -53,7 +58,8 @@ public:
 
 private:
     Drone* drone;
-    int waypoints_visited;
-
     PidController x_pid, y_pid;
+    float kp, ki, kd;
+    float setpoint;
+    float position_tolerance;
 };

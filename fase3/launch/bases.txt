@@ -1,7 +1,8 @@
 1: pentagono laranja assimetrico
 2: circulo
-3: cruz
-4: estrela
-5: hexagono
-6: pentagono vermelho regular
-7: quadrado
+3: triangulo
+4: quadrado
+5: pentagono vermelho regular
+6: hexagono
+7: estrela
+8: cruz

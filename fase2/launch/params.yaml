@@ -1,14 +1,14 @@
 fase2_node:
   ros__parameters:
-    takeoff_height: -2.8
-    max_vertical_velocity: 1.0
+    takeoff_height: -2.6
+    max_vertical_velocity: 0.9
     max_horizontal_velocity: 0.5
 
     estimated_distance: 4.3
     min_distance: 3.3
     max_distance: 5.3
 
-    drop_height: -2.5
+    drop_height: -2.4
 
     horizontal_kp: 0.6
     horizontal_ki: 0.04
@@ -36,7 +36,7 @@ fase2_node:
 # Blue detector parameters
 blue_detector:
   ros__parameters:
-    image_topic: '/vertical_camera/compressed'
+    image_topic: '/camera/compressed'
     processing_frequency: 10.0
     confidence_threshold: 0.1
     
@@ -62,7 +62,7 @@ blue_detector:
 # Red hose detector parameters
 mangueira_detector:
   ros__parameters:
-    image_topic: '/vertical_camera/compressed'
+    image_topic: '/camera/compressed'
     processing_frequency: 10.0
     confidence_threshold: 0.2
     

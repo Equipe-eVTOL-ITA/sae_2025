@@ -1,0 +1,82 @@
+# HSV ranges for fase3 objects
+# Os valores podem ser ajustados posteriormente conforme calibração real
+
+circulo:
+  hue_lower: 100
+  hue_upper: 130
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 120
+  value_upper: 255
+
+triangulo:
+  hue_lower: 100
+  hue_upper: 130
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 50
+  value_upper: 120
+
+hexagono:
+  hue_lower: 0
+  hue_upper: 10
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 120
+  value_upper: 255
+
+hexagono2: # Para wrap-around do vermelho
+  hue_lower: 170
+  hue_upper: 180
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 120
+  value_upper: 255
+
+pentagono:
+  hue_lower: 0
+  hue_upper: 10
+  saturation_lower: 200
+  saturation_upper: 255
+  value_lower: 60
+  value_upper: 120
+
+estrela:
+  hue_lower: 40
+  hue_upper: 80
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 50
+  value_upper: 255
+
+cruz:
+  hue_lower: 140
+  hue_upper: 170
+  saturation_lower: 80
+  saturation_upper: 255
+  value_lower: 80
+  value_upper: 255
+
+casa:
+  hue_lower: 10
+  hue_upper: 25
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 100
+  value_upper: 255
+
+quadrado:
+  hue_lower: 0
+  hue_upper: 180
+  saturation_lower: 0
+  saturation_upper: 255
+  value_lower: 0
+  value_upper: 50
+
+quadrado2:
+  hue_lower: 10
+  hue_upper: 30
+  saturation_lower: 100
+  saturation_upper: 255
+  value_lower: 30
+  value_upper: 120

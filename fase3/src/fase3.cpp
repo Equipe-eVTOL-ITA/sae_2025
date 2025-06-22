@@ -137,7 +137,7 @@ public:
 
         // Parametros da missao
         this->declare_parameter("max_search_time", 30.0);
-        this->declare_parameter("class_id", "");
+        this->declare_parameter("class_id", "estrela");
         this->declare_parameter("position_tolerance", 0.08);
 
         // Parametros do PID

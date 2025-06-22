@@ -59,15 +59,8 @@ public:
             for (const auto& bbox : bboxes) {
                 if (bbox.class_id == this->class_id) {
                     this->drone->log("Base " + this->class_id + " encontrada.");
-                    this->counter++;
-                    temp_counter++;
+                    return "BASE FOUND";
                 }
-            }
-            if(temp_counter==0)
-                this->counter = 0;
-            if(this->counter >= 5){ // espera detectar 5 vezes antes de passar para a proxima etapa
-                this->counter = 0;
-                return "BASE FOUND";
             }
         }
 

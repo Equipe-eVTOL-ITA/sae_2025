@@ -51,9 +51,9 @@ fase1_fsm:
 post_detector:
   ros__parameters:
     # Image and processing parameters
-    image_topic: '/horizontal_camera/compressed'
+    image_topic: '/camera/compressed'
     processing_frequency: 10.0  # Hz
-    confidence_threshold: 0.3
+    confidence_threshold: 0.37
     
     # Morphological operations parameters
     min_area: 600  # Increased to filter out small sky patches
@@ -62,29 +62,29 @@ post_detector:
     
     # Post detection constraints - Posts are vertical: 0.1m diameter, 2.5m height
     min_aspect_ratio: 0.02  # Very thin vertical objects (width/height)
-    max_aspect_ratio: 1.0   # Still vertical, but allow some perspective distortion
+    max_aspect_ratio: 0.4   # Still vertical, but allow some perspective distortion
     
     # HSV Color ranges for post detection - Made more restrictive to avoid sky
     # Preto (Black) - Low value for dark/black colors
     preto_lower_h: 0
-    preto_lower_s: 20
-    preto_lower_v: 10
-    preto_upper_h: 180
-    preto_upper_s: 255
-    preto_upper_v: 52  # Reduced from 60 to avoid shadows
+    preto_lower_s: 0
+    preto_lower_v: 0
+    preto_upper_h: 360
+    preto_upper_s: 95
+    preto_upper_v: 70  # Reduced from 60 to avoid shadows
     
     # Azul (Blue) - Slightly less restrictive but still avoiding sky
-    azul_lower_h: 105  # Slightly wider hue range
-    azul_lower_s: 140  # Reduced saturation requirement
-    azul_lower_v: 85   # Reduced value requirement
-    azul_upper_h: 125  # Slightly wider hue range
+    azul_lower_h: 76  # Slightly wider hue range
+    azul_lower_s: 187  # Reduced saturation requirement
+    azul_lower_v: 90   # Reduced value requirement
+    azul_upper_h: 110  # Slightly wider hue range
     azul_upper_s: 255
-    azul_upper_v: 220
+    azul_upper_v: 248
     
     # Vermelho (Red) - Two ranges due to HSV wrap-around
     vermelho_lower1_h: 0
-    vermelho_lower1_s: 60
-    vermelho_lower1_v: 100
+    vermelho_lower1_s: 68
+    vermelho_lower1_v: 110
     vermelho_upper1_h: 10
     vermelho_upper1_s: 255
     vermelho_upper1_v: 255
@@ -96,9 +96,9 @@ post_detector:
     vermelho_upper2_v: 255
     
     # Rosa (Pink)
-    rosa_lower_h: 140
+    rosa_lower_h: 135
     rosa_lower_s: 50
-    rosa_lower_v: 50
+    rosa_lower_v: 75
     rosa_upper_h: 170
-    rosa_upper_s: 255
-    rosa_upper_v: 255
+    rosa_upper_s: 230
+    rosa_upper_v: 217
